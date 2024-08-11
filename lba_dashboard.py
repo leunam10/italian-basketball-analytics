@@ -10,7 +10,6 @@ data of the teams and players from 2003-2004 to 2023-2024 seasons.
 
 import pandas as pd
 import streamlit as st
-import sys
 import os
 
 
@@ -57,4 +56,3 @@ if(__name__ == "__main__"):
                                   value = (start_year, end_year)) 
 
     st.write("You have selected the seasons from", season_interval[0], "to", season_interval[1])
-    
