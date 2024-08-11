@@ -23,7 +23,7 @@ The second part of the project involves developing predictive models based on th
 
 ### Prerequisites
 To get started with this project, you'll need to have the following installed on your system:
-- Python 3.8+
+- Python 3.12+
 - Streamlit
 - Pandas
 - Scikit-learn (for predictive modeling)
@@ -55,6 +55,7 @@ This will launch the interactive dashboard in your web browser.
 ### Exploring the Data and Models
 - Historical data is available in the `data/` directory.
 - Predictive models are located in the `models/` directory.
+- Figures are located in the `figures/` directory.
 - Scripts detailing the analysis and model training process can be found in the `scripts/` directory.
 
 ## 📈 Data Sources
