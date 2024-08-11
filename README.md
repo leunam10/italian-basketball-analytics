@@ -33,7 +33,7 @@ To get started with this project, you'll need to have the following installed on
 Clone this repository to your local machine:
 
 ```bash
-git clone https://github.com/your-username/italian-basketball-analytics.git
+git clone https://github.com/leunam10/italian-basketball-analytics.git
 cd italian-basketball-analytics
 ```
 
