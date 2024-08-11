@@ -47,7 +47,7 @@ pip install -r requirements.txt
 To start the Streamlit dashboard, simply run:
 
 ```bash
-streamlit run dashboard.py
+streamlit run lba_dashboard.py
 ```
 
 This will launch the interactive dashboard in your web browser.
