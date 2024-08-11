@@ -31,17 +31,19 @@ if(__name__ == "__main__"):
 
     # read csv files
     teams_df = read_data("teams")
-    player_df =read_data("players")
+    players_df = read_data("players")
     
     # streamlit dashboard
+
     
     ## setup the title
     st.title("🏀 Italian Basketball A League Analytics")
     
+    
     ## data selection 
-    st.header("Data Selection")
-    data_choice = st.radio("Select the data you want to analyze",
-                           ["LBA Teams", "LBA Players"])
+    st.sidebar.header("Dataset Selection")
+    data_choice = st.sidebar.radio("Select the data you want to analyze",
+                                  ["LBA Teams", "LBA Players"])
     
     if(data_choice == "LBA Teams"):
         start_year = teams_df["Year"].min()
@@ -50,9 +52,40 @@ if(__name__ == "__main__"):
         start_year = players_df["Year"].min()
         end_year = players_df["Year"].max()
 
-        
-    season_interval = st.slider("Select the range of years:",
-                                  min_value = start_year, max_value = end_year,
-                                  value = (start_year, end_year)) 
 
-    st.write("You have selected the seasons from", season_interval[0], "to", season_interval[1])
+    if(data_choice == "LBA Teams"):
+        st.header("LBA Teams Dataframe")
+        st.dataframe(teams_df)
+    elif(data_choice == "LBA Players"):
+        st.header("LBA Players Dataframe")
+        st.dataframe(players_df)
+        
+    st.sidebar.header("Time Selection")
+    season_interval = st.sidebar.slider("Select the range of years:",
+                                        min_value = start_year, max_value = end_year,
+                                        value = (start_year, end_year)) 
+
+    st.sidebar.write("You have selected the seasons from", season_interval[0], "to", season_interval[1])
+
+    if(data_choice == "LBA Teams"):
+        st.sidebar.header("Teams Selection")
+        select_all_toggle = st.sidebar.toggle("Activate to have all the teams selected at once")
+        if(select_all_toggle):
+            st.sidebar.write(":red[You have selected all the teams in the dataset]")
+        else:
+            st.sidebar.multiselect("Select the team(s)", list(teams_df["Team"].unique()))
+
+    elif(data_choice == "LBA Players"):
+        st.sidebar.header("Players Selection")
+        select_all_toggle = st.sidebar.toggle("Activate to have all the players selected at once")
+        if(select_all_toggle):
+            st.sidebar.markdown(":red[You have selected all the players in the dataset]")
+        else:
+            st.sidebar.multiselect("Select the team(s)", list(players_df["Player"].unique()))
+
+
+    # select the dataframe
+    if(select_all_toggle):        
+        pass
+    else:
+        pass
