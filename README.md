@@ -55,7 +55,7 @@ This will launch the interactive dashboard in your web browser.
 ### Exploring the Data and Models
 - Historical data is available in the `data/` directory.
 - Predictive models are located in the `models/` directory.
-- Notebooks detailing the analysis and model training process can be found in the `notebooks/` directory.
+- Scripts detailing the analysis and model training process can be found in the `scripts/` directory.
 
 ## 📈 Data Sources
 The datasets used in this project contain detailed statistical data for both players and teams across 20+ seasons of the Italian Basketball A League. These datasets include information such as:
@@ -66,7 +66,6 @@ The datasets used in this project contain detailed statistical data for both pla
 
 ## 🛠️ Contributing
 We welcome contributions from the community! If you'd like to contribute to this project, please fork the repository and create a pull request with your changes. Make sure to follow the existing code style and include relevant tests.
-
 
 ---
 
