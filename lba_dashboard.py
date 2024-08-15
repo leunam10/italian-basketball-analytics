@@ -93,6 +93,50 @@ def df_selector(df, dataset, dataset_element, season_interval, stat):
 
     return select_df
 
+
+def generic_metric_plot(df, dataset, metric):
+
+    """
+
+    This method is used to create a bar chart for the selected metric of the team or of the player
+
+    - df (pandas dataframe)
+    - dataset (str): which dataset will be selected
+    - metric (str): which metric to show 
+
+    """
+
+
+    if(dataset == "LBA Teams"):    
+        
+        # create the dataframe of the count with respect the metric
+        df_metric_count = df.groupby("Team")[metric].sum().reset_index()
+
+        # select only the teams with metric larger than 1
+        df_metric_count_filter = df_metric_count[df_metric_count[metric] > 0]
+
+        # order the df with respect to the metric
+        sort_df = df_metric_count_filter.sort_values(by=metric, ascending=False)
+
+        # create the plotly figure
+        fig = px.bar(sort_df, x="Team", y=metric)
+
+    elif(dataset == "LBA Players"):
+
+        # create the dataframe of the count with respect the metric
+        df_metric_count = df.groupby("Player")[metric].sum().reset_index()
+
+        # select only the teams with metric larger than 1
+        df_metric_count_filter = df_metric_count[df_metric_count[metric] > 0]
+
+        # order the df with respect to the metric
+        sort_df = df_metric_count_filter.sort_values(by=metric, ascending=False)
+        
+        # create the plotly figure
+        fig = px.bar(sort_df, x="Player", y=metric)
+
+    st.plotly_chart(fig)
+
 if(__name__ == "__main__"):
 
     # read csv files
@@ -175,21 +219,55 @@ if(__name__ == "__main__"):
                 select_df = df_selector(teams_df, data_choice, "all", season_interval, select_stat)
         elif(data_choice == "LBA Players"):
             if(dataset_element == "all"):
-                select_df = df_selector(layers_df, data_choice, "all", season_interval, select_stat)
+                select_df = df_selector(players_df, data_choice, "all", season_interval, select_stat)
     else:
         if(data_choice == "LBA Teams"):
             if(len(dataset_element)>0):
                 select_df = df_selector(teams_df, data_choice, dataset_element, season_interval, select_stat)
         elif(data_choice == "LBA Players"):
             if(len(dataset_element)>0):
-                select_df = df_selector(layers_df, data_choice, dataset_element, season_interval, select_stat)
+                select_df = df_selector(players_df, data_choice, dataset_element, season_interval, select_stat)
 
 
-    try:
-        fig = px.bar(
-                select_df,
-                x="Team",
-                y="Winner")
-        st.plotly_chart(fig)
-    except:
-        st.write("ERROR")
+    ## Metrics
+    if(data_choice == "LBA Teams"):
+        st.header("Team Metrics")
+        col1, col2, col3 = st.columns(3) 
+        
+        try:
+            playoff_partecipations = select_df["Playoff"].sum()
+            final_partecipations = select_df["Finalist"].sum()
+            winned_season = select_df["Winner"].sum() 
+            col1.metric("Number of playoff partecipation", playoff_partecipations)
+            col2.metric("Number of final partecipation", final_partecipations)
+            col3.metric("Number of seasons won", winned_season)
+        except:
+            col1.metric("Number of playoff partecipation", None)
+            col2.metric("Number of final partecipation", None)
+            col3.metric("Number of seasons won", None)
+
+        metric = st.radio("Select the team metric", 
+                          ["Playoff", "Finalist", "Winner"],
+                          captions=["Number of playoff partecipations", "Number of finals played", "Number of won seasons"])
+
+        try:
+            generic_metric_plot(select_df, data_choice, metric)
+        except:
+            st.write("**Select at least one team to show the metric chart**")
+
+    elif(data_choice == "LBA Players"):
+        st.header("Player Metrics")
+
+        try:
+            mvp_winner = select_df["MVP"].sum()
+            st.metric("Number of times MVP", mvp_winner)    
+        except:
+            st.metric("Number of times MVP", None)    
+
+    
+    #st.selectbox("Select the player metric", ["MVP"], index=None, placeholder="Select the metric...")
+
+    
+
+
+  
