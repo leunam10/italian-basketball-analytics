@@ -11,6 +11,7 @@ data of the teams and players from 2003-2004 to 2023-2024 seasons.
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+import plotly.graph_objects as go
 import copy
 import os
 
@@ -36,7 +37,7 @@ def read_md_file(dataset):
         with open("data/players_stats_help.md", "r") as file:
             stats_help_md = file.read()
     elif(dataset == "players"):
-        with open("data/players_stats_help.md", "r") as file:
+        with open("data/teams_stats_help.md", "r") as file:
             stats_help_md = file.read()
 
     return stats_help_md
@@ -167,6 +168,49 @@ def generic_metric_plot(df, dataset, metric):
 
     st.plotly_chart(fig)
 
+
+def stats_plot(df, dataset, stat, char_type, year_for_bar_chart):
+
+    """
+
+    This method is used to plot a specific statistics for the team/player 
+    dataframe. 
+
+    - df (pandas dataframe)
+    - dataset (str): which dataset will be selected
+    - stat (str): which statistic to show
+
+    """
+
+    if(dataset == "LBA Teams"):
+        trace_name_list = list(df["Team"].unique())
+        col_name = "Team"
+    elif(dataset == "LBA Players"):
+        trace_name_list = list(df["Player"].unique())
+        col_name = "Player"
+
+    df = df.sort_values(by="Year")
+
+    if(char_type == "Line"):
+        fig = go.Figure()
+
+        traces_list = []
+        for team in trace_name_list:
+            df_team = df.loc[df[col_name]==team]
+
+            trace = go.Scatter(x=df_team["Year"], y=df_team[stat], mode="lines+markers", name=team)
+            traces_list.append(trace)
+
+        fig = go.Figure(data=traces_list)
+
+    elif(char_type == "Bar"):
+        pass
+
+    st.plotly_chart(fig)
+
+
+
+
 if(__name__ == "__main__"):
 
     # read csv files
@@ -227,14 +271,14 @@ if(__name__ == "__main__"):
         teams_cols = teams_df.columns
         cols_to_remove = ["Team", "Year", "Playoff", "Finalist", "Winner"]
         teams_stats = list(filter(lambda x: x not in cols_to_remove, teams_cols))
-        select_stat = st.sidebar.selectbox("Select the statistics you want to show",
+        stat = st.sidebar.selectbox("Select the statistics you want to show",
                                            (teams_stats), index=None,
                                            placeholder="Select the statistic...", help=teams_stats_help_md)
     elif(data_choice == "LBA Players"):
         players_cols = players_df.columns
         cols_to_remove = ["Player", "Year", "Team", "MVP"]
         players_stats = list(filter(lambda x: x not in cols_to_remove, players_cols))
-        select_stat = st.sidebar.selectbox("Select the statistics you want to show",
+        stat = st.sidebar.selectbox("Select the statistics you want to show",
                                            (players_stats), index=None,
                                            placeholder="Select the statistic...", help=players_stats_help_md)
 
@@ -243,17 +287,19 @@ if(__name__ == "__main__"):
     if(select_all_toggle): 
         if(data_choice == "LBA Teams"):
             if(dataset_element == "all"):
-                select_df = df_selector(teams_df, data_choice, "all", season_interval, select_stat)
+                select_df = df_selector(teams_df, data_choice, "all", season_interval, stat)
         elif(data_choice == "LBA Players"):
             if(dataset_element == "all"):
-                select_df = df_selector(players_df, data_choice, "all", season_interval, select_stat)
+                select_df = df_selector(players_df, data_choice, "all", season_interval, stat)
     else:
         if(data_choice == "LBA Teams"):
             if(len(dataset_element)>0 or season_interval):
-                select_df = df_selector(teams_df, data_choice, dataset_element, season_interval, select_stat)
+                select_df = df_selector(teams_df, data_choice, dataset_element, season_interval, stat)
         elif(data_choice == "LBA Players"):
             if(len(dataset_element or season_interval)>0):
-                select_df = df_selector(players_df, data_choice, dataset_element, season_interval, select_stat)
+                select_df = df_selector(players_df, data_choice, dataset_element, season_interval, stat)
+
+    select_df = select_df.sort_values(by="Year")
 
 
     ##################
@@ -315,7 +361,28 @@ if(__name__ == "__main__"):
         generic_metric_plot(select_df, data_choice, metric)
         
     
+    ## statistic plots
+    st.header("Statistics Chart")
+    
+    col1, col2 = st.columns(2)
 
+    chart_type = col1.radio("Select the type of chart", ["Line", "Bar"])
+
+    if(chart_type == "Bar"):
+        year_selection = False
+    else:
+        year_selection = True
+
+
+    year_for_bar_chart = col2.selectbox("Select the season you want to use for the bar chart",
+                                           (select_df["Year"].unique()), index=None,
+                                           placeholder="Select the season...", disabled=year_selection)
+
+
+    try:
+        stats_plot(select_df, data_choice, stat, chart_type, year_for_bar_chart)
+    except:
+        st.write("**Select at least one statistic to show the chart**")
     
 
 
