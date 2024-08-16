@@ -1,0 +1,20 @@
+- **GP (Games Played):** The number of games a player has participated in during the season.
+- **MPG (Minutes Per Game):** The average number of minutes a player spends on the court per game.
+- **PPG (Points Per Game):** The average number of points a player scores per game.
+- **FGM (Field Goals Made):** The total number of successful field goals made by the player.
+- **FGA (Field Goals Attempted):** The total number of field goal attempts by the player.
+- **FG% (Field Goal Percentage):** The percentage of successful field goals made out of total attempts.
+- **3PM (Three-Point Field Goals Made):** The total number of successful three-point shots made.
+- **3PA (Three-Point Field Goals Attempted):** The total number of three-point shot attempts.
+- **3P% (Three-Point Percentage):** The percentage of successful three-point shots made out of total attempts.
+- **FTM (Free Throws Made):** The total number of successful free throws made by the player.
+- **FTA (Free Throws Attempted):** The total number of free throw attempts.
+- **FT% (Free Throw Percentage):** The percentage of successful free throws made out of total attempts.
+- **ORB (Offensive Rebounds):** The number of rebounds collected by a player on the offensive side of the court.
+- **DRB (Defensive Rebounds):** The number of rebounds collected by a player on the defensive side of the court.
+- **RPG (Rebounds Per Game):** The average number of total rebounds (offensive + defensive) a player collects per game.
+- **APG (Assists Per Game):** The average number of assists a player makes per game.
+- **SPG (Steals Per Game):** The average number of steals a player records per game.
+- **BPG (Blocks Per Game):** The average number of shots blocked by a player per game.
+- **TOV (Turnovers):** The total number of times a player loses possession of the ball to the opposing team.
+- **PF (Personal Fouls):** The total number of fouls committed by the player.
