@@ -11,11 +11,35 @@ data of the teams and players from 2003-2004 to 2023-2024 seasons.
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+import copy
 import os
 
 
 path = os.path.dirname(os.path.abspath("lba_dashboard.py"))
 data_path = os.path.join(path, "data")
+
+@st.cache_data
+def read_md_file(dataset):
+    
+    """
+    
+    This methods allows to read an markdown file containing the description of the
+    statistics for team and player dataset.
+
+    - dataset (str):  which dataset to load as pandas dataframe
+
+    return
+    - stats_help_md (str): markdown formatted string
+
+    """
+    if(dataset == "teams"):
+        with open("data/players_stats_help.md", "r") as file:
+            stats_help_md = file.read()
+    elif(dataset == "players"):
+        with open("data/players_stats_help.md", "r") as file:
+            stats_help_md = file.read()
+
+    return stats_help_md
 
 @st.cache_data
 def read_data(dataset):
@@ -65,29 +89,15 @@ def df_selector(df, dataset, dataset_element, season_interval, stat):
     """    
 
     # select by team/player and stat. The Year is selected later
-    if(dataset_element != "all"):
+    if(dataset_element != "all" and len(dataset_element)>0):
         if(dataset == "LBA Teams"):
-            if(select_stat == None):
-                select_df = df[df["Team"].isin(dataset_element)][["Team", "Playoff", "Finalist", "Winner", "Year"]]
-            else:
-                select_df = df[df["Team"].isin(dataset_element)][["Team", "Playoff", "Finalist", "Winner", "Year", stat]]
+            select_df = df[df["Team"].isin(dataset_element)]
         elif(dataset == "LBA Players"):
-            if(select_stat == None):
-                select_df = df[df["Player"].isin(dataset_element)][["Player", "Year", "Team", "MVP"]]
-            else:
-                select_df = df[df["Player"].isin(dataset_element)][["Player", "Year", "Team", "MVP", stat]]
-    elif(dataset_element == "all"):
-        if(dataset == "LBA Teams"):
-            if(select_stat == None):
-                select_df = df[["Team", "Playoff", "Finalist", "Winner", "Year"]]
-            else:
-                select_df = df[["Team", "Playoff", "Finalist", "Winner", "Year", stat]]
-        elif(dataset == "LBA Players"):
-            if(select_stat == None):
-                select_df = df[["Player", "Year", "Team", "MVP"]]
-            else:
-                select_df = df[["Player", "Year", "Team", "MVP", stat]]
-
+            select_df = df[df["Player"].isin(dataset_element)]
+    elif(dataset_element == "all" or len(dataset_element)==0):
+        select_df = copy.copy(df)
+            
+    
     # select by year
     select_df = select_df.loc[(select_df["Year"]>=season_interval[0]) & (select_df["Year"]<=season_interval[1])]
 
@@ -120,6 +130,14 @@ def generic_metric_plot(df, dataset, metric):
 
         # create the plotly figure
         fig = px.bar(sort_df, x="Team", y=metric)
+        
+        # update the y-label title
+        if(metric == "Playoff"):
+            fig.update_layout(yaxis_title="Number of playoff parteciations")
+        elif(metric == "Finalist"):
+            fig.update_layout(yaxis_title="Number of finals played")
+        elif(metric == "Winner"):
+            fig.update_layout(yaxis_title="Number of won seasons")
 
     elif(dataset == "LBA Players"):
 
@@ -131,9 +149,21 @@ def generic_metric_plot(df, dataset, metric):
 
         # order the df with respect to the metric
         sort_df = df_metric_count_filter.sort_values(by=metric, ascending=False)
-        
+
         # create the plotly figure
         fig = px.bar(sort_df, x="Player", y=metric)
+
+        # update the y-label title
+        if(metric == "MVP"):
+            fig.update_layout(yaxis_title="Number of time MVP")
+
+
+    # add the values of the bar on top of the bar
+    fig.update_traces(text=sort_df[metric],  textposition='outside')
+
+    # Adjust the y-axis limits (ylim)
+    fig.update_yaxes(range=[0, sort_df[metric].max()+2], tickmode='linear', dtick=2)  # Adjust this range as needed 
+
 
     st.plotly_chart(fig)
 
@@ -143,16 +173,11 @@ if(__name__ == "__main__"):
     teams_df = read_data("teams")
     players_df = read_data("players")
     
-    # streamlit dashboard
+    teams_stats_help_md = read_md_file("teams")
+    players_stats_help_md = read_md_file("players")
 
-    ## setup the title
-    st.title("🏀 Italian Basketball A League Analytics")
-        
-    ## dataset selection
-    st.sidebar.header("Dataset Selection")
-    data_choice = st.sidebar.radio("Select the data you want to analyze",
-                                  ["LBA Teams", "LBA Players"])
-    
+    # default values
+    data_choice = "LBA Teams"
     if(data_choice == "LBA Teams"):
         start_year = teams_df["Year"].min()
         end_year = teams_df["Year"].max()
@@ -160,12 +185,14 @@ if(__name__ == "__main__"):
         start_year = players_df["Year"].min()
         end_year = players_df["Year"].max()
 
-    if(data_choice == "LBA Teams"):
-        st.header("LBA Teams Dataframe")
-        st.dataframe(teams_df)
-    elif(data_choice == "LBA Players"):
-        st.header("LBA Players Dataframe")
-        st.dataframe(players_df)
+    ###########
+    # Sidebar #
+    ###########
+    
+    ## dataset selection
+    st.sidebar.header("Dataset Selection")
+    data_choice = st.sidebar.radio("Select the data you want to analyze",
+                                  ["LBA Teams", "LBA Players"])
         
     ## time interval selection
     st.sidebar.header("Time Selection")
@@ -202,14 +229,14 @@ if(__name__ == "__main__"):
         teams_stats = list(filter(lambda x: x not in cols_to_remove, teams_cols))
         select_stat = st.sidebar.selectbox("Select the statistics you want to show",
                                            (teams_stats), index=None,
-                                           placeholder="Select the statistic...")
+                                           placeholder="Select the statistic...", help=teams_stats_help_md)
     elif(data_choice == "LBA Players"):
         players_cols = players_df.columns
         cols_to_remove = ["Player", "Year", "Team", "MVP"]
         players_stats = list(filter(lambda x: x not in cols_to_remove, players_cols))
         select_stat = st.sidebar.selectbox("Select the statistics you want to show",
                                            (players_stats), index=None,
-                                           placeholder="Select the statistic...")
+                                           placeholder="Select the statistic...", help=players_stats_help_md)
 
 
     ## select the dataframe
@@ -222,12 +249,33 @@ if(__name__ == "__main__"):
                 select_df = df_selector(players_df, data_choice, "all", season_interval, select_stat)
     else:
         if(data_choice == "LBA Teams"):
-            if(len(dataset_element)>0):
+            if(len(dataset_element)>0 or season_interval):
                 select_df = df_selector(teams_df, data_choice, dataset_element, season_interval, select_stat)
         elif(data_choice == "LBA Players"):
-            if(len(dataset_element)>0):
+            if(len(dataset_element or season_interval)>0):
                 select_df = df_selector(players_df, data_choice, dataset_element, season_interval, select_stat)
 
+
+    ##################
+    # main dashboard #
+    ##################
+
+    ## setup the title
+    st.title("🏀 Italian Basketball A League Analytics")
+    
+    ## show the dataframe as a table
+    if(data_choice == "LBA Teams"):
+        st.header("LBA Teams Dataframe")
+        try:
+            st.dataframe(select_df)
+        except:
+            st.dataframe(teams_df)
+    elif(data_choice == "LBA Players"):
+        st.header("LBA Players Dataframe")
+        try:
+            st.dataframe(select_df)
+        except:
+            st.dataframe(players_df)
 
     ## Metrics
     if(data_choice == "LBA Teams"):
@@ -257,15 +305,16 @@ if(__name__ == "__main__"):
 
     elif(data_choice == "LBA Players"):
         st.header("Player Metrics")
-
+        metric = "MVP"
         try:
             mvp_winner = select_df["MVP"].sum()
-            st.metric("Number of times MVP", mvp_winner)    
+            st.metric("Number of times MVP", mvp_winner)   
         except:
             st.metric("Number of times MVP", None)    
 
+        generic_metric_plot(select_df, data_choice, metric)
+        
     
-    #st.selectbox("Select the player metric", ["MVP"], index=None, placeholder="Select the metric...")
 
     
 
