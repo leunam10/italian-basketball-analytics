@@ -204,7 +204,15 @@ def stats_plot(df, dataset, stat, char_type, year_for_bar_chart):
         fig = go.Figure(data=traces_list)
 
     elif(char_type == "Bar"):
-        pass
+        season_df = df.loc[df["Year"]==year_for_bar_chart]
+        fig = px.bar(season_df, x="Team", y=stat)
+
+        # add the values of the bar on top of the bar
+        fig.update_traces(text=season_df[stat],  textposition='outside')
+
+        # Adjust the y-axis limits (ylim)
+        fig.update_yaxes(range=[0, season_df[stat].max()+8], tickmode='linear', dtick=10)  # Adjust this range as needed 
+
 
     st.plotly_chart(fig)
 
@@ -379,9 +387,12 @@ if(__name__ == "__main__"):
                                            placeholder="Select the season...", disabled=year_selection)
 
 
-    try:
+    col.selectbox("Prova", ("1","2"))
+
+
+    if(stat != None):
         stats_plot(select_df, data_choice, stat, chart_type, year_for_bar_chart)
-    except:
+    else:
         st.write("**Select at least one statistic to show the chart**")
     
 
