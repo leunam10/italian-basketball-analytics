@@ -169,7 +169,7 @@ def generic_metric_plot(df, dataset, metric):
     st.plotly_chart(fig)
 
 
-def stats_plot(df, dataset, stat, char_type, year_for_bar_chart):
+def stats_plot(df, dataset, stat, chart_type, year_for_bar_chart, sub_selection):
 
     """
 
@@ -179,6 +179,9 @@ def stats_plot(df, dataset, stat, char_type, year_for_bar_chart):
     - df (pandas dataframe)
     - dataset (str): which dataset will be selected
     - stat (str): which statistic to show
+    - chart_tye (str): if to show a line or bar chart
+    - year_for_bar_chart (int): season to show in the bar chart
+    - sub_selection (str): if to show a specific sub-samples of teams/players
 
     """
 
@@ -191,28 +194,28 @@ def stats_plot(df, dataset, stat, char_type, year_for_bar_chart):
 
     df = df.sort_values(by="Year")
 
-    if(char_type == "Line"):
-        fig = go.Figure()
+    fig = go.Figure()
 
-        traces_list = []
-        for team in trace_name_list:
-            df_team = df.loc[df[col_name]==team]
+    traces_list = []
+    for trace_i in trace_name_list:
 
-            trace = go.Scatter(x=df_team["Year"], y=df_team[stat], mode="lines+markers", name=team)
-            traces_list.append(trace)
+        if(chart_type == "Line"):
+            select_df = df.loc[df[col_name]==trace_i]
+            trace = go.Scatter(x=select_df["Year"], y=select_df[stat], mode="lines+markers", name=trace_i)
+        
+        elif(chart_type == "Bar"):
+            season_df = df.loc[(df["Year"]==year_for_bar_chart) & (df[col_name]==trace_i)]
+            trace = go.Bar(x=season_df["Team"], y=season_df[stat], name=trace_i)
+        
+        traces_list.append(trace)
 
-        fig = go.Figure(data=traces_list)
+    fig = go.Figure(data=traces_list)
 
-    elif(char_type == "Bar"):
-        season_df = df.loc[df["Year"]==year_for_bar_chart]
-        fig = px.bar(season_df, x="Team", y=stat)
-
+    if(chart_type == "Line"):
+        fig.update_xaxes(range=[df["Year"].unique().min(), df["Year"].unique().max()], tickmode='linear', dtick=1)  # Adjust this range as needed 
+    elif(chart_type == "Bar"):
         # add the values of the bar on top of the bar
-        fig.update_traces(text=season_df[stat],  textposition='outside')
-
-        # Adjust the y-axis limits (ylim)
-        fig.update_yaxes(range=[0, season_df[stat].max()+8], tickmode='linear', dtick=10)  # Adjust this range as needed 
-
+        fig.update_traces(text=season_df[stat],  textposition='inside')
 
     st.plotly_chart(fig)
 
@@ -383,15 +386,20 @@ if(__name__ == "__main__"):
 
 
     year_for_bar_chart = col2.selectbox("Select the season you want to use for the bar chart",
-                                           (select_df["Year"].unique()), index=None,
+                                           (select_df["Year"].unique()), index=0,
                                            placeholder="Select the season...", disabled=year_selection)
 
 
-    col.selectbox("Prova", ("1","2"))
+    if(data_choice == "LBA Teams"):
+        sub_selection = col2.selectbox("Chart sub-selection", 
+                                      ("Playoff", "Finalist", "Winner"), index=None)
 
+    elif(data_choice == "LBA Players"):
+        sub_selection = col2.selectbox("Chart sub-selection", 
+                                      ("MVP"), index=None)
 
     if(stat != None):
-        stats_plot(select_df, data_choice, stat, chart_type, year_for_bar_chart)
+        stats_plot(select_df, data_choice, stat, chart_type, year_for_bar_chart, sub_selection)
     else:
         st.write("**Select at least one statistic to show the chart**")
     
