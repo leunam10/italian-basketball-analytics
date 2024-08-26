@@ -199,23 +199,37 @@ def stats_plot(df, dataset, stat, chart_type, year_for_bar_chart, sub_selection)
     traces_list = []
     for trace_i in trace_name_list:
 
+        select_df = df.loc[df[col_name]==trace_i]
         if(chart_type == "Line"):
-            select_df = df.loc[df[col_name]==trace_i]
             trace = go.Scatter(x=select_df["Year"], y=select_df[stat], mode="lines+markers", name=trace_i)
-        
+            traces_list.append(trace)
+
         elif(chart_type == "Bar"):
             season_df = df.loc[(df["Year"]==year_for_bar_chart) & (df[col_name]==trace_i)]
-            trace = go.Bar(x=season_df["Team"], y=season_df[stat], name=trace_i)
+
+            if(sub_selection == None): 
+                trace = go.Bar(x=season_df[col_name], y=season_df[stat], name=trace_i, text=season_df[stat], textposition="inside")
+                traces_list.append(trace)
+            else:
+                if(sub_selection != None):
+                    try:
+                        if(season_df[sub_selection].iloc[0] == 1):                         
+                            trace = go.Bar(x=season_df[col_name], y=season_df[stat], name=trace_i, text=season_df[stat], textposition="inside", 
+                                       marker_color=["red"])
+                        else:
+                            trace = go.Bar(x=season_df[col_name], y=season_df[stat], name=trace_i, text=season_df[stat], textposition="inside", 
+                                           marker_color=["gray"])
+                        traces_list.append(trace)
+                    except:
+                        pass
+
         
-        traces_list.append(trace)
 
     fig = go.Figure(data=traces_list)
-
+    fig.update_layout(yaxis_title=stat)
+        
     if(chart_type == "Line"):
         fig.update_xaxes(range=[df["Year"].unique().min(), df["Year"].unique().max()], tickmode='linear', dtick=1)  # Adjust this range as needed 
-    elif(chart_type == "Bar"):
-        # add the values of the bar on top of the bar
-        fig.update_traces(text=season_df[stat],  textposition='inside')
 
     st.plotly_chart(fig)
 
