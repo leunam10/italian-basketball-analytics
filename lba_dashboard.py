@@ -299,9 +299,18 @@ def stats_aggregation(df, player, year):
     return performance_dict
 
 
-def player_performance_radar_chart(df, player, year, app_theme):
+def player_performance_radar_chart(df, player1, player2, year, app_theme):
 
     """
+    This method allows to make a radar chart with the performances of a player. 
+    It is also possible to compare the performances of two players
+
+    - df: pandas dataframe
+    - player1 (str): name of first player
+    - player2 (str): name of the second player. If it is None just player1 will be used
+    - year (str): season to be used
+    - app_theme (str): it is used to adapt the background color of the radar chart
+    
     """
 
     if(app_theme == "light"):
@@ -309,22 +318,97 @@ def player_performance_radar_chart(df, player, year, app_theme):
     else:
         bgcolor = "black"
 
-    performance_dict = stats_aggregation(df, player, year)
-    theta = list(performance_dict.keys())
-    theta.append(theta[0])
-    values = list(performance_dict.values())
-    values.append(values[0])
+    if(player2 == None):
+        performance_dict = stats_aggregation(df, player1, year)
+        theta = list(performance_dict.keys())
+        theta.append(theta[0])
+        values = list(performance_dict.values())
+        values.append(values[0])
+    else:
+        # player 1 
+        performance1_dict = stats_aggregation(df, player1, year)
+        theta1 = list(performance1_dict.keys())
+        theta1.append(theta1[0])
+        values1 = list(performance1_dict.values())
+        values1.append(values1[0])
 
-    fig = go.Figure(
-        data=go.Scatterpolargl(
-            r=values,
-            theta=theta,
-            fill='toself',
-            marker=dict(size=10, color="mediumseagreen")
-        )
-    )
+        # player 2
+        performance2_dict = stats_aggregation(df, player2, year)
+        theta2 = list(performance2_dict.keys())
+        theta2.append(theta2[0])
+        values2 = list(performance2_dict.values())
+        values2.append(values2[0])
+
+    fig = go.Figure()
+
+    if(player2 == None):
+        data = go.Scatterpolargl(
+                r=values,
+                theta=theta,
+                fill='toself',
+                marker=dict(size=10, color="mediumseagreen"))
+        fig = go.Figure(data=data)
+    else:
+        traces_list = []
+
+        # player 1
+        data1 = go.Scatterpolargl(
+        r=values1,
+        theta=theta1,
+        fill='toself',
+        name = player1,
+        marker=dict(size=10, color="mediumseagreen"))
+        traces_list.append(data1)
+
+        # player 2
+        data2 = go.Scatterpolargl(
+        r=values2,
+        theta=theta2,
+        fill='toself',
+        name=player2,
+        marker=dict(size=10, color="red"))
+        traces_list.append(data2)
+        
+        fig = go.Figure(data=traces_list)
 
     fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100]), bgcolor = bgcolor))
+    st.plotly_chart(fig)
+
+def stat_comparison_plot(df, x_ax_stat, y_ax_stat):
+
+    """
+    """
+
+    map_colors = px.colors.sequential.Turbo
+
+    if("Team" in list(df.columns) and "Player" not in list(df.columns)):
+        col_name = "Team"
+    elif("Player" in list(df.columns)):
+        col_name = "Player"
+
+    num_teams = df[col_name].nunique()  # Number of unique teams
+    team_colors = {team: map_colors[i % len(map_colors)] for i, team in enumerate(df[col_name].unique())}
+    
+    element_list = []
+    fig = go.Figure()
+
+    for element in df[col_name].unique():
+        for year in df["Year"].unique():
+        
+            x = df.loc[(df["Year"] == year) & (df[col_name] == element)][x_ax_stat]
+            y = df.loc[(df["Year"] == year) & (df[col_name] == element)][y_ax_stat]
+
+            if(element not in element_list):
+                fig.add_trace(go.Scatter(x=x, y=y, mode="markers", marker=dict(color=team_colors[element]), name=element, showlegend=True))
+                element_list.append(element)
+            else:
+                fig.add_trace(go.Scatter(x=x, y=y, mode="markers", marker=dict(color=team_colors[element]), name=element, showlegend=False))
+        
+    fig.update_traces(marker_line_width=1, marker_size=10)
+    
+    fig.update_layout(xaxis_title=x_ax_stat)
+    fig.update_layout(yaxis_title=y_ax_stat)
+
     st.plotly_chart(fig)
 
 
@@ -332,8 +416,10 @@ def player_performance_radar_chart(df, player, year, app_theme):
 if(__name__ == "__main__"):
 
     # get info about the streamlit theme selected
-    app_theme = st_theme()["base"]
-    
+    #app_theme = st_theme()["base"]
+    app_theme = "dark"
+
+
     # read csv files
     teams_df = read_data("teams")
     players_df = read_data("players")
@@ -383,24 +469,6 @@ if(__name__ == "__main__"):
             dataset_element = "all"
         else:
             dataset_element = st.sidebar.multiselect("Select the player(s)", list(players_df["Player"].unique()))
-
-    ## statistics selection
-    #st.sidebar.header("Statistics Selection")
-    #if(data_choice == "LBA Teams"):
-    #    teams_cols = teams_df.columns
-    #    cols_to_remove = ["Team", "Year", "Playoff", "Finalist", "Winner"]
-    #    teams_stats = list(filter(lambda x: x not in cols_to_remove, teams_cols))
-    #    stat = st.sidebar.selectbox("Select the statistics you want to show",
-    #                                       (teams_stats), index=None,
-    #                                       placeholder="Select the statistic...", help=stats_help_md)
-    #elif(data_choice == "LBA Players"):
-    #    players_cols = players_df.columns
-    #    cols_to_remove = ["Player", "Year", "Team", "MVP"]
-    #    players_stats = list(filter(lambda x: x not in cols_to_remove, players_cols))
-    #    stat = st.sidebar.selectbox("Select the statistics you want to show",
-    #                                       (players_stats), index=None,
-    #                                       placeholder="Select the statistic...", help=stats_help_md)
-
 
     ## select the dataframe
     if(select_all_toggle): 
@@ -496,11 +564,11 @@ if(__name__ == "__main__"):
         players_stats = list(filter(lambda x: x not in cols_to_remove, players_cols))
         stat = st.selectbox("Select the statistics you want to show",
                                            (players_stats), index=None,
-                                           placeholder="Select the statistic...", help=stats_help_md)
+                                           placeholder="Select the statistic...", help=stats_help_md, key="stat_for_statistics_chart")
 
     year_for_bar_chart = st.selectbox("Select the season you want to use for the bar chart",
-                                           (select_df["Year"].unique()), index=None,
-                                           placeholder="Select the season...", key="bar")
+                                      (select_df["Year"].unique()), index=None,
+                                      placeholder="Select the season...", key="bar")
 
 
     if(data_choice == "LBA Teams"):
@@ -511,12 +579,14 @@ if(__name__ == "__main__"):
         sub_selection = st.selectbox("Chart sub-selection", 
                                       ("MVP"), index=None)
 
-    if(stat != None):
+    if(stat != None and year_for_bar_chart != None):
         stats_plot(select_df, data_choice, stat, year_for_bar_chart, sub_selection)
-    else:
+    elif(stat != None and year_for_bar_chart == None):
+        st.write("**Select one season to show the chart**")
+    elif(stat == None and year_for_bar_chart != None):
         st.write("**Select at least one statistic to show the chart**")
     
-
+        
     # Player Performance analyzer
     if(data_choice == "LBA Players"):
         st.header("Player Performance Analyzer")
@@ -528,8 +598,57 @@ if(__name__ == "__main__"):
         player_df = players_df.loc[players_df["Player"] == player]
         year_for_radar_chart = st.selectbox("Select the season you want to use for the bar chart",
                                            (player_df["Year"].unique()), index=None,
-                                           placeholder="Select the season...", key="radar")
+                                           placeholder="Select the season...", key="radar_year1")
+
+        col1, col2 = st.columns(2)
+
+        compare = col1.toggle("Compare two players")
+        if(compare == True):
+            player_for_comparison = col2.selectbox("Select the second player you want to analyze", 
+                                                 list(select_df["Player"].unique()), placeholder="Select the player...",
+                                                 index=None)
+            player_for_comparison_df = players_df.loc[players_df["Player"] == player_for_comparison]                                                 
+            year_for_radar_chart = col2.selectbox("Select the season you want to use for the bar chart",
+                                                (player_for_comparison_df["Year"].unique()), index=None,
+                                                placeholder="Select the season...", key="radar_year2")
+
+        else:
+            player_for_comparison = None
+
         try:
-            player_performance_radar_chart(select_df, player, year_for_radar_chart, app_theme)       
+            player_performance_radar_chart(select_df, player, player_for_comparison, year_for_radar_chart, app_theme)       
         except:
             st.write("**Select a player to show the chart**")          
+
+
+    # Comparison of two statistics 
+    st.header("Comparison Chart")
+
+    if(data_choice == "LBA Teams"):
+        teams_cols = teams_df.columns
+        cols_to_remove = ["Team", "Year", "Playoff", "Finalist", "Winner"]
+        teams_stats = list(filter(lambda x: x not in cols_to_remove, teams_cols))
+        x_ax_stat = st.selectbox("Select statistic for the x-axis",
+                                           (teams_stats), index=None,
+                                           placeholder="Select the x-axis...", help=stats_help_md, key="stat1_for_comparison_team_team")
+        y_ax_stat = st.selectbox("Select statistic for the y-axis",
+                                           (teams_stats), index=None,
+                                           placeholder="Select the y-axis...", help=stats_help_md, key="stat2_for_comparison")
+
+    elif(data_choice == "LBA Players"):
+        players_cols = players_df.columns
+        cols_to_remove = ["Player", "Year", "Team", "MVP"]
+        players_stats = list(filter(lambda x: x not in cols_to_remove, players_cols))
+        x_ax_stat = st.selectbox("Select statistic for the x-axis",
+                                 (players_stats), index=None,
+                                 placeholder="Select x-axis...", help=stats_help_md, key="stat1_for_comparison_player")
+        y_ax_stat = st.selectbox("Select statistic for the y-axis",
+                                 (players_stats), index=None,
+                                 placeholder="Select y-axis...", key="stat2_for_comparison_player")
+
+    stat_comparison_plot(select_df, x_ax_stat, y_ax_stat)
+
+    #try:
+    #    stat_comparison_plot(select_df, x_ax_stat, y_ax_stat)
+    #except:
+    #    st.write("**SSSS**")
