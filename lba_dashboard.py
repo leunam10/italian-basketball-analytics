@@ -11,6 +11,7 @@ data of the teams and players from 2003-2004 to 2023-2024 seasons.
 import pandas as pd
 import streamlit as st
 from streamlit_theme import st_theme
+from io import StringIO
 import plotly.express as px
 import plotly.graph_objects as go
 import copy
@@ -411,6 +412,39 @@ def stat_comparison_plot(df, x_ax_stat, y_ax_stat):
 
     st.plotly_chart(fig)
 
+def integrity_check(df, true_df):
+
+    """
+    This methods allows to check the structure of the new uploaded file. 
+    It returns True if the new file has the same structure of the file loaded 
+    by default 
+
+    - df: pandas dataframe containing the new information
+    - true_df: pandas dataframe with the correct structure
+
+    return
+    - integrity (Bool): True if the structure is expected one; False otherwise
+
+    """
+
+    # check the number of columns
+    if(true_df.shape[1] != df.shape[1]):
+        st.write("1")
+        return False
+
+    # check the columns name
+    if(set(true_df.columns) != set(df.columns)):
+        st.write("2")
+        return False
+    
+    # check cols type
+    if(not all(true_df.dtypes == df.dtypes)):
+        st.write(3)
+        return False
+
+    return True
+
+
 
 
 if(__name__ == "__main__"):
@@ -488,6 +522,40 @@ if(__name__ == "__main__"):
 
     select_df = select_df.sort_values(by="Year")
 
+    # upload new file
+    st.sidebar.header("Select a file for the teams of the new season")
+    uploaded_teams_file = st.sidebar.file_uploader("Choose a file...", key="upload_teams_file")
+
+    st.sidebar.header("Select a file for the players of the new season")
+    uploaded_players_file = st.sidebar.file_uploader("Choose a file...", key="upload_players_file")
+
+    if(uploaded_teams_file is not None):
+        # read the file as csv
+        teams_new_df = pd.read_csv(uploaded_teams_file)
+        
+        # check file integrity
+        integrity = integrity_check(teams_new_df, teams_df)
+
+        st.write(integrity)
+        if(integrity):
+            pass
+        else:
+            uploaded_players_file = None
+            st.sidebar.error("The choosen file did not pass the integrity check")
+
+    if(uploaded_players_file is not None):
+        # read the file as csv
+        players_new_df = pd.read_csv(uploaded_players_file)
+        
+        # check file integrity
+        integrity = integrity_check(players_new_df, players_df)
+        st.write(integrity)
+
+        if(integrity):
+            pass
+        else:
+            uploaded_players_file = None
+            st.sidebar.error("The choosen file did not pass the integrity check")
 
     ##################
     # main dashboard #
