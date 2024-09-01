@@ -10,6 +10,7 @@ data of the teams and players from 2003-2004 to 2023-2024 seasons.
 
 import pandas as pd
 import streamlit as st
+from streamlit_theme import st_theme
 import plotly.express as px
 import plotly.graph_objects as go
 import copy
@@ -66,25 +67,23 @@ def read_data(dataset):
     return df
         
 
-def df_selector(df, dataset, dataset_element, season_interval, stat):
+def df_selector(df, dataset, dataset_element, season_interval):
 
     """
 
     This method allows to select a dataframe with respect the specific player or team
-    and for a specific statistic.
-
+    
     - df: pandas dataframe to select
     - dataset (str): which dataset will be selected
     - dataset_element (dict): the values of the dict are the name of the player or the team
     - season_interval (tuple): the interval of year to consider
-    - stat (str): which statistic to select
 
     return
     - select_df: a pandas dataframe selection of the input dataframe
 
     """    
 
-    # select by team/player and stat. The Year is selected later
+    # select by team/player. The Year is selected later
     if(dataset_element != "all" and len(dataset_element)>0):
         if(dataset == "LBA Teams"):
             select_df = df[df["Team"].isin(dataset_element)]
@@ -243,10 +242,10 @@ def stats_aggregation(df, player, year):
                         "Playmaking" : 0}
     
     # select the dataframe by year
-    df_for_year = df.loc[df["Year"] == int(year)]
-        
+    df_for_year = df.loc[df["Year"] == int(year)]       
     # select the player
-    player_df = df.loc[df["Player"] == player]
+    player_df = df.loc[(df["Player"] == player) & (df["Year"] == int(year))]
+
     # Shooting
     ## this is computed by consider the points made by the player normalize to maxiumum points made by a player during the season
         
@@ -263,49 +262,78 @@ def stats_aggregation(df, player, year):
     ## this is computed by considering the normalized average value of the fg%(2pt% and 3pt%) and ft%
         
     # compute the scoring performance
-    st.write(player_df["FG%"].iloc[0])
-    st.write(player_df["FT%"].iloc[0])
-    
-    scoring = ((player_df["FG%"].iloc[0] + player_df["FT%"].iloc[0])/2)*100
+    scoring = int((player_df["FG%"].iloc[0] + player_df["FT%"].iloc[0])/2*100)
         
     # update the dictionary
     performance_dict["Scoring"] = scoring
 
-
     # Offensive Aggressiveness
-    # Difensive Aggressiveness
-    # Playmaking
+    ## this is computed by considering the offensive rebounds with respect the maximum value within the same year
+    # compute the maximum value for the points
+    orb_max = df_for_year["ORB"].max()
 
-    st.write(performance_dict)
+    # compute the shooting performance
+    aggr_off = int((player_df["ORB"].iloc[0]/orb_max) * 100)
+
+    # update the dictionary
+    performance_dict["Offensive Aggressiveness"] = aggr_off
+
+    # Difensive Aggressiveness
+    ## this is computed as the average of the steal, blocks, fouls and difensive rebounds
+    aggr_dif = int((player_df["SPG"].iloc[0]/df_for_year["SPG"].max() + 
+                    player_df["BPG"].iloc[0]/df_for_year["BPG"].max() + 
+                    player_df["PF"].iloc[0]/df_for_year["PF"].max() + 
+                    player_df["DRB"].iloc[0]/df_for_year["DRB"].max())/4*100)
+
+    # update dictionary
+    performance_dict["Difensive Aggressiveness"] = aggr_dif
+
+    # Playmaking
+    ## this is computed as the average of assists and turnovers
+    playmaking = int((player_df["APG"].iloc[0]/df_for_year["APG"].max() + 
+                      player_df["TOV"].iloc[0]/df_for_year["TOV"].max())/2*100)
+
+    # update dictionary
+    performance_dict["Playmaking"] = playmaking
+
     return performance_dict
 
 
-def player_performance_radar_chart(df, player, year):
+def player_performance_radar_chart(df, player, year, app_theme):
 
     """
     """
+
+    if(app_theme == "light"):
+        bgcolor = "white"
+    else:
+        bgcolor = "black"
 
     performance_dict = stats_aggregation(df, player, year)
     theta = list(performance_dict.keys())
+    theta.append(theta[0])
     values = list(performance_dict.values())
-
+    values.append(values[0])
 
     fig = go.Figure(
-        data=go.Scatterpolar(
+        data=go.Scatterpolargl(
             r=values,
             theta=theta,
             fill='toself',
-            name='Player Performance'
+            marker=dict(size=10, color="mediumseagreen")
         )
     )
 
-    fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), showlegend=True, title="Player Performance Spider Chart")
+    fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100]), bgcolor = bgcolor))
     st.plotly_chart(fig)
 
 
 
 if(__name__ == "__main__"):
 
+    # get info about the streamlit theme selected
+    app_theme = st_theme()["base"]
+    
     # read csv files
     teams_df = read_data("teams")
     players_df = read_data("players")
@@ -357,38 +385,38 @@ if(__name__ == "__main__"):
             dataset_element = st.sidebar.multiselect("Select the player(s)", list(players_df["Player"].unique()))
 
     ## statistics selection
-    st.sidebar.header("Statistics Selection")
-    if(data_choice == "LBA Teams"):
-        teams_cols = teams_df.columns
-        cols_to_remove = ["Team", "Year", "Playoff", "Finalist", "Winner"]
-        teams_stats = list(filter(lambda x: x not in cols_to_remove, teams_cols))
-        stat = st.sidebar.selectbox("Select the statistics you want to show",
-                                           (teams_stats), index=None,
-                                           placeholder="Select the statistic...", help=stats_help_md)
-    elif(data_choice == "LBA Players"):
-        players_cols = players_df.columns
-        cols_to_remove = ["Player", "Year", "Team", "MVP"]
-        players_stats = list(filter(lambda x: x not in cols_to_remove, players_cols))
-        stat = st.sidebar.selectbox("Select the statistics you want to show",
-                                           (players_stats), index=None,
-                                           placeholder="Select the statistic...", help=stats_help_md)
+    #st.sidebar.header("Statistics Selection")
+    #if(data_choice == "LBA Teams"):
+    #    teams_cols = teams_df.columns
+    #    cols_to_remove = ["Team", "Year", "Playoff", "Finalist", "Winner"]
+    #    teams_stats = list(filter(lambda x: x not in cols_to_remove, teams_cols))
+    #    stat = st.sidebar.selectbox("Select the statistics you want to show",
+    #                                       (teams_stats), index=None,
+    #                                       placeholder="Select the statistic...", help=stats_help_md)
+    #elif(data_choice == "LBA Players"):
+    #    players_cols = players_df.columns
+    #    cols_to_remove = ["Player", "Year", "Team", "MVP"]
+    #    players_stats = list(filter(lambda x: x not in cols_to_remove, players_cols))
+    #    stat = st.sidebar.selectbox("Select the statistics you want to show",
+    #                                       (players_stats), index=None,
+    #                                       placeholder="Select the statistic...", help=stats_help_md)
 
 
     ## select the dataframe
     if(select_all_toggle): 
         if(data_choice == "LBA Teams"):
             if(dataset_element == "all"):
-                select_df = df_selector(teams_df, data_choice, "all", season_interval, stat)
+                select_df = df_selector(teams_df, data_choice, "all", season_interval)
         elif(data_choice == "LBA Players"):
             if(dataset_element == "all"):
-                select_df = df_selector(players_df, data_choice, "all", season_interval, stat)
+                select_df = df_selector(players_df, data_choice, "all", season_interval)
     else:
         if(data_choice == "LBA Teams"):
             if(len(dataset_element)>0 or season_interval):
-                select_df = df_selector(teams_df, data_choice, dataset_element, season_interval, stat)
+                select_df = df_selector(teams_df, data_choice, dataset_element, season_interval)
         elif(data_choice == "LBA Players"):
             if(len(dataset_element or season_interval)>0):
-                select_df = df_selector(players_df, data_choice, dataset_element, season_interval, stat)
+                select_df = df_selector(players_df, data_choice, dataset_element, season_interval)
 
     select_df = select_df.sort_values(by="Year")
 
@@ -455,8 +483,23 @@ if(__name__ == "__main__"):
     ## statistic plots
     st.header("Statistics Chart")
     
+    if(data_choice == "LBA Teams"):
+        teams_cols = teams_df.columns
+        cols_to_remove = ["Team", "Year", "Playoff", "Finalist", "Winner"]
+        teams_stats = list(filter(lambda x: x not in cols_to_remove, teams_cols))
+        stat = st.selectbox("Select the statistics you want to show",
+                                           (teams_stats), index=None,
+                                           placeholder="Select the statistic...", help=stats_help_md)
+    elif(data_choice == "LBA Players"):
+        players_cols = players_df.columns
+        cols_to_remove = ["Player", "Year", "Team", "MVP"]
+        players_stats = list(filter(lambda x: x not in cols_to_remove, players_cols))
+        stat = st.selectbox("Select the statistics you want to show",
+                                           (players_stats), index=None,
+                                           placeholder="Select the statistic...", help=stats_help_md)
+
     year_for_bar_chart = st.selectbox("Select the season you want to use for the bar chart",
-                                           (select_df["Year"].unique()), index=0,
+                                           (select_df["Year"].unique()), index=None,
                                            placeholder="Select the season...", key="bar")
 
 
@@ -479,10 +522,14 @@ if(__name__ == "__main__"):
         st.header("Player Performance Analyzer")
 
         player = st.selectbox("Select the player you want to analyze", 
-                               list(players_df["Player"].unique()), placeholder="Select the player...",
+                               list(select_df["Player"].unique()), placeholder="Select the player...",
                                index=None)
-        year_for_radar_chart = st.selectbox("Select the season you want to use for the bar chart",
-                                           (select_df["Year"].unique()), index=0,
-                                           placeholder="Select the season...", key="radar")
 
-        player_performance_radar_chart(select_df, player, year_for_radar_chart)
+        player_df = players_df.loc[players_df["Player"] == player]
+        year_for_radar_chart = st.selectbox("Select the season you want to use for the bar chart",
+                                           (player_df["Year"].unique()), index=None,
+                                           placeholder="Select the season...", key="radar")
+        try:
+            player_performance_radar_chart(select_df, player, year_for_radar_chart, app_theme)       
+        except:
+            st.write("**Select a player to show the chart**")          
