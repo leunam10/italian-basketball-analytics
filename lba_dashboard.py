@@ -646,9 +646,7 @@ if(__name__ == "__main__"):
                                  (players_stats), index=None,
                                  placeholder="Select y-axis...", key="stat2_for_comparison_player")
 
-    stat_comparison_plot(select_df, x_ax_stat, y_ax_stat)
-
-    #try:
-    #    stat_comparison_plot(select_df, x_ax_stat, y_ax_stat)
-    #except:
-    #    st.write("**SSSS**")
+    try:
+        stat_comparison_plot(select_df, x_ax_stat, y_ax_stat)
+    except:
+        st.write("**Select the x and y axes for the comparison chart**")
