@@ -20,25 +20,20 @@ path = os.path.dirname(os.path.abspath("lba_dashboard.py"))
 data_path = os.path.join(path, "data")
 
 @st.cache_data
-def read_md_file(dataset):
+def read_md_file():
     
     """
     
     This methods allows to read an markdown file containing the description of the
-    statistics for team and player dataset.
-
-    - dataset (str):  which dataset to load as pandas dataframe
+    statistics dataset.
 
     return
     - stats_help_md (str): markdown formatted string
 
     """
-    if(dataset == "teams"):
-        with open("data/players_stats_help.md", "r") as file:
-            stats_help_md = file.read()
-    elif(dataset == "players"):
-        with open("data/teams_stats_help.md", "r") as file:
-            stats_help_md = file.read()
+    
+    with open("data/stats_help.md", "r") as file:
+        stats_help_md = file.read()
 
     return stats_help_md
 
@@ -222,21 +217,91 @@ def stats_plot(df, dataset, stat, year_for_bar_chart, sub_selection):
     fig = go.Figure(data=traces_list)
     fig.update_layout(yaxis_title=stat)
         
-
     st.plotly_chart(fig)
 
+def stats_aggregation(df, player, year):
 
-    def player_performance_spyder_chart(df):
+    """
+        
+    This methods allows to aggregate the statistics of a player to have an overall indication
+    of his performances.
 
-        """
-        """
+    - df: pandas dataframe of all the players
+    - player (str): name of the player
+    - year (str): year over wich compute the performance
+    
+    return
+    - performance_dict (dict): dict of the performance for the player
 
-        theta = ["Shooting", "Scoring", "Offensive Aggressiveness",
-                 "Difensive Aggressiveness", "Playmaking"]
+    """ 
+
+    # dictionary definition
+    performance_dict = {"Shooting" : 0,
+                        "Scoring" : 0,
+                        "Offensive Aggressiveness" : 0,
+                        "Difensive Aggressiveness" : 0,
+                        "Playmaking" : 0}
+    
+    # select the dataframe by year
+    df_for_year = df.loc[df["Year"] == int(year)]
+        
+    # select the player
+    player_df = df.loc[df["Player"] == player]
+    # Shooting
+    ## this is computed by consider the points made by the player normalize to maxiumum points made by a player during the season
+        
+    # compute the maximum value for the points
+    points_max = df_for_year["PPG"].max()
+
+    # compute the shooting performance
+    shooting = int((player_df["PPG"].iloc[0]/points_max) * 100)
+
+    # update the dictionary
+    performance_dict["Shooting"] = shooting
+
+    # Scoring
+    ## this is computed by considering the normalized average value of the fg%(2pt% and 3pt%) and ft%
+        
+    # compute the scoring performance
+    st.write(player_df["FG%"].iloc[0])
+    st.write(player_df["FT%"].iloc[0])
+    
+    scoring = ((player_df["FG%"].iloc[0] + player_df["FT%"].iloc[0])/2)*100
+        
+    # update the dictionary
+    performance_dict["Scoring"] = scoring
 
 
-        fig = px.line_polar(df, r='r', theta='theta', line_close=True)
-        fig.update_traces(fill='toself')
+    # Offensive Aggressiveness
+    # Difensive Aggressiveness
+    # Playmaking
+
+    st.write(performance_dict)
+    return performance_dict
+
+
+def player_performance_radar_chart(df, player, year):
+
+    """
+    """
+
+    performance_dict = stats_aggregation(df, player, year)
+    theta = list(performance_dict.keys())
+    values = list(performance_dict.values())
+
+
+    fig = go.Figure(
+        data=go.Scatterpolar(
+            r=values,
+            theta=theta,
+            fill='toself',
+            name='Player Performance'
+        )
+    )
+
+    fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), showlegend=True, title="Player Performance Spider Chart")
+    st.plotly_chart(fig)
+
 
 
 if(__name__ == "__main__"):
@@ -244,9 +309,7 @@ if(__name__ == "__main__"):
     # read csv files
     teams_df = read_data("teams")
     players_df = read_data("players")
-    
-    teams_stats_help_md = read_md_file("teams")
-    players_stats_help_md = read_md_file("players")
+    stats_help_md = read_md_file()
 
     # default values
     data_choice = "LBA Teams"
@@ -301,14 +364,14 @@ if(__name__ == "__main__"):
         teams_stats = list(filter(lambda x: x not in cols_to_remove, teams_cols))
         stat = st.sidebar.selectbox("Select the statistics you want to show",
                                            (teams_stats), index=None,
-                                           placeholder="Select the statistic...", help=teams_stats_help_md)
+                                           placeholder="Select the statistic...", help=stats_help_md)
     elif(data_choice == "LBA Players"):
         players_cols = players_df.columns
         cols_to_remove = ["Player", "Year", "Team", "MVP"]
         players_stats = list(filter(lambda x: x not in cols_to_remove, players_cols))
         stat = st.sidebar.selectbox("Select the statistics you want to show",
                                            (players_stats), index=None,
-                                           placeholder="Select the statistic...", help=players_stats_help_md)
+                                           placeholder="Select the statistic...", help=stats_help_md)
 
 
     ## select the dataframe
@@ -394,7 +457,7 @@ if(__name__ == "__main__"):
     
     year_for_bar_chart = st.selectbox("Select the season you want to use for the bar chart",
                                            (select_df["Year"].unique()), index=0,
-                                           placeholder="Select the season...")
+                                           placeholder="Select the season...", key="bar")
 
 
     if(data_choice == "LBA Teams"):
@@ -418,5 +481,8 @@ if(__name__ == "__main__"):
         player = st.selectbox("Select the player you want to analyze", 
                                list(players_df["Player"].unique()), placeholder="Select the player...",
                                index=None)
+        year_for_radar_chart = st.selectbox("Select the season you want to use for the bar chart",
+                                           (select_df["Year"].unique()), index=0,
+                                           placeholder="Select the season...", key="radar")
 
-
+        player_performance_radar_chart(select_df, player, year_for_radar_chart)
