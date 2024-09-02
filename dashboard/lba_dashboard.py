@@ -19,7 +19,7 @@ import os
 
 
 path = os.path.dirname(os.path.abspath("lba_dashboard.py"))
-data_path = os.path.join(path, "data")
+data_path = os.path.join(path, "../data")
 
 @st.cache_data
 def read_md_file():
@@ -33,8 +33,10 @@ def read_md_file():
     - stats_help_md (str): markdown formatted string
 
     """
-    
-    with open("data/stats_help.md", "r") as file:
+    path = os.path.dirname(os.path.abspath("lba_dashboard.py"))
+    data_path = os.path.join(path, "../data")
+
+    with open(os.path.join(data_path, "stats_help.md"), "r") as file:
         stats_help_md = file.read()
 
     return stats_help_md
