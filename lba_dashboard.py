@@ -429,17 +429,14 @@ def integrity_check(df, true_df):
 
     # check the number of columns
     if(true_df.shape[1] != df.shape[1]):
-        st.write("1")
         return False
 
     # check the columns name
     if(set(true_df.columns) != set(df.columns)):
-        st.write("2")
         return False
     
     # check cols type
     if(not all(true_df.dtypes == df.dtypes)):
-        st.write(3)
         return False
 
     return True
@@ -497,7 +494,7 @@ if(__name__ == "__main__"):
     
             if(integrity):
                 # if the file is ok add the new line to the original dataset
-                pass
+                teams_df = pd.concat([teams_df, teams_new_df])
             else:
                 st.sidebar.error("The choosen file did not pass the integrity check")
     
@@ -509,9 +506,9 @@ if(__name__ == "__main__"):
             integrity = integrity_check(players_new_df, players_df)
            
             if(integrity):
-                pass
+                # if the file is ok add the new line to the original dataset
+                teams_df = pd.concat([players_df, players_new_df])
             else:
-                uploaded_players_file = None
                 st.sidebar.error("The choosen file did not pass the integrity check")
 
     ## time interval selection
@@ -558,9 +555,6 @@ if(__name__ == "__main__"):
                 select_df = df_selector(players_df, data_choice, dataset_element, season_interval)
 
     select_df = select_df.sort_values(by="Year")
-
-
-    
 
     ##################
     # main dashboard #
