@@ -476,7 +476,44 @@ if(__name__ == "__main__"):
     st.sidebar.header("Dataset Selection")
     data_choice = st.sidebar.radio("Select the data you want to analyze",
                                   ["LBA Teams", "LBA Players"])
-        
+    
+    # upload new file
+    allow_upload = st.sidebar.toggle("Activate upload option")
+
+    if(allow_upload):
+        st.sidebar.header("Select a file for the teams of the new season")
+        uploaded_teams_file = st.sidebar.file_uploader("Choose a file...", key="upload_teams_file")
+    
+        st.sidebar.header("Select a file for the players of the new season")
+        uploaded_players_file = st.sidebar.file_uploader("Choose a file...", key="upload_players_file")
+    
+    
+        if(uploaded_teams_file is not None):
+            # read the file as csv
+            teams_new_df = pd.read_csv(uploaded_teams_file)
+            
+            # check file integrity
+            integrity = integrity_check(teams_new_df, teams_df)
+    
+            if(integrity):
+                # if the file is ok add the new line to the original dataset
+                pass
+            else:
+                st.sidebar.error("The choosen file did not pass the integrity check")
+    
+        if(uploaded_players_file is not None):
+            # read the file as csv
+            players_new_df = pd.read_csv(uploaded_players_file)
+            
+            # check file integrity
+            integrity = integrity_check(players_new_df, players_df)
+           
+            if(integrity):
+                pass
+            else:
+                uploaded_players_file = None
+                st.sidebar.error("The choosen file did not pass the integrity check")
+
     ## time interval selection
     st.sidebar.header("Time Selection")
     season_interval = st.sidebar.slider("Select the range of years:",
@@ -522,48 +559,15 @@ if(__name__ == "__main__"):
 
     select_df = select_df.sort_values(by="Year")
 
-    # upload new file
-    st.sidebar.header("Select a file for the teams of the new season")
-    uploaded_teams_file = st.sidebar.file_uploader("Choose a file...", key="upload_teams_file")
 
-    st.sidebar.header("Select a file for the players of the new season")
-    uploaded_players_file = st.sidebar.file_uploader("Choose a file...", key="upload_players_file")
-
-    if(uploaded_teams_file is not None):
-        # read the file as csv
-        teams_new_df = pd.read_csv(uploaded_teams_file)
-        
-        # check file integrity
-        integrity = integrity_check(teams_new_df, teams_df)
-
-        st.write(integrity)
-        if(integrity):
-            pass
-        else:
-            uploaded_players_file = None
-            st.sidebar.error("The choosen file did not pass the integrity check")
-
-    if(uploaded_players_file is not None):
-        # read the file as csv
-        players_new_df = pd.read_csv(uploaded_players_file)
-        
-        # check file integrity
-        integrity = integrity_check(players_new_df, players_df)
-        st.write(integrity)
-
-        if(integrity):
-            pass
-        else:
-            uploaded_players_file = None
-            st.sidebar.error("The choosen file did not pass the integrity check")
+    
 
     ##################
     # main dashboard #
     ##################
 
     ## setup the title
-    st.title("🏀 Italian Basketball A League Analytics")
-    
+    st.title("🏀 Italian Basketball A League Analytics")    
     ## show the dataframe as a table
     if(data_choice == "LBA Teams"):
         st.header("LBA Teams Dataframe")
