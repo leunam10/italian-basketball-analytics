@@ -378,6 +378,12 @@ def player_performance_radar_chart(df, player1, player2, year, app_theme):
 def stat_comparison_plot(df, x_ax_stat, y_ax_stat):
 
     """
+    This methods allows to create a 2d scatter plot with x and y axes as two statistics of players or teams.
+
+    - df: pandas dataframe
+    - x_ax_stat (str): statistic used for the x-axis
+    - y_ax_stat (str): statistic used for the y-axis
+    
     """
 
     map_colors = px.colors.sequential.Turbo
