@@ -8,6 +8,7 @@ This script is used to performe an exploratory data analysis of both the dataset
 
 import numpy as np
 import pandas as pd
+import itertools
 from scipy.stats import kruskal
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -23,12 +24,9 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument("--dataset", choices=["teams", "players"], help = "which dataset to use for the analysis")
-parser.add_argument("--savefigure", choices=["yes", "no"], default="no", help = "if to save of not the figures")
-
 args = parser.parse_args()
 
 dataset = args.dataset
-savefigure = True if args.savefigure == "yes" else False
 
 # path definition
 script_path = os.path.dirname(os.path.abspath("eda.py"))
@@ -147,8 +145,8 @@ def plot_column_by_year(df, column, savename=None):
     # Show the plot
     plt.xticks(rotation=45)
     if savename:
-        plt.savefig(savename, bbox_inches='tight', dpi=300)
-
+        plt.savefig(os.path.join(figures_path,savename), bbox_inches='tight', dpi=300)
+        plt.close()
 
 def plot_feature_relationship(df, feature_x, feature_y, savename=None):
     """
@@ -200,8 +198,8 @@ def plot_feature_relationship(df, feature_x, feature_y, savename=None):
 
     # Save the plot if a save path is provided
     if savename:
-        plt.savefig(savename, bbox_inches='tight', dpi=300)
-        
+        plt.savefig(os.path.join(figures_path, savename), bbox_inches='tight', dpi=300)
+        plt.close()
 
 def plot_column_distribution(df, column_name, plot_type='hist', bins=20, kde=True, savename=None):
     """
@@ -245,7 +243,8 @@ def plot_column_distribution(df, column_name, plot_type='hist', bins=20, kde=Tru
 
     # Save the plot if a save path is provided
     if savename:
-        plt.savefig(savename, bbox_inches='tight', dpi=300)
+        plt.savefig(os.path.join(figures_path, savename), bbox_inches='tight', dpi=300)
+        plt.close()
 
 def plot_distribution_by_year(df, column_name, bins=20, savename=None):
     """
@@ -290,7 +289,102 @@ def plot_distribution_by_year(df, column_name, bins=20, savename=None):
 
     # Save the plot if a save path is provided
     if savename:
-        plt.savefig(savename, bbox_inches='tight', dpi=300)
+        plt.savefig(os.path.join(figures_path, savename), bbox_inches='tight', dpi=300)
+        plt.close()
+
+def plot_feature_by_year_and_team(df, feature, teams=None, players=None, savename=None):
+    """
+    Plots a specific feature for different years and different teams.
+
+    Parameters:
+        df (pd.DataFrame): The input DataFrame containing the data.
+        feature (str): The name of the feature/column to plot.
+        teams (list): Optional. A list of team names to plot. If None, all teams are plotted.
+        players (list): Optional. A list of player names to plot. If None, all teams are plotted.
+        savename (str): Optional. The path to save the plot image. If None, the plot is not saved.
+
+    Returns:
+        None
+    """
+    # Ensure the required columns are in the DataFrame
+    if 'Year' not in df.columns or 'Team' not in df.columns or feature not in df.columns:
+        raise ValueError("The DataFrame must contain 'Year', 'Team', and the specified feature columns.")
+
+    # Filter the DataFrame for the specified teams (if provided)
+    if teams:
+        df = df[df['Team'].isin(teams)]
+        players = None
+    if players:
+        df = df[df["Player"].isin(players)]
+        teams = None
+
+    # Ensure the Year column is treated as numeric for proper plotting
+    df.loc[:, 'Year'] = pd.to_numeric(df['Year'])
+
+    # Plot the feature by year for different teams
+    plt.figure(figsize=(12, 6))
+    if teams:
+        sns.lineplot(data=df, x='Year', y=feature, hue='Team', marker='o', palette='tab10')
+    if players:
+        sns.lineplot(data=df, x='Year', y=feature, hue='Player', marker='o', palette='tab10')
+
+    # Set plot labels and title
+    plt.xlabel('Year')
+    plt.ylabel(feature)
+    plt.title(f'{feature} by Year for Different Teams')
+    
+    # Show legend and format the x-axis to display as integer
+    if teams:
+        plt.legend(title='Teams')
+    if players:
+        plt.legend(title='Players')
+
+    plt.xticks(sorted(df['Year'].unique()))  # Ensure the x-axis is sorted and shows all years
+    
+    # Show or save the plot
+    if savename:
+        plt.savefig(os.path.join(figures_path, savename), bbox_inches='tight', dpi=300)
+        plt.close()
+    else:
+        plt.show()
+
+def plot_teams_players_distribution(df, column='Team', savename=None):
+    """
+    Plots the distribution of teams or players in the dataset.
+
+    Parameters:
+        df (pd.DataFrame): The input DataFrame containing the data.
+        column (str): The column to plot the distribution for ('Team' or 'Player').
+        savename (str): Optional. The path to save the plot image. If None, the plot is not saved.
+
+    Returns:
+        None
+    """
+    # Ensure the required column is in the DataFrame
+    if column not in df.columns:
+        raise ValueError(f"The DataFrame must contain a '{column}' column.")
+
+    # Plot the distribution of the specified column (Team or Player)
+    plt.figure(figsize=(12, 6))
+    value_counts = df[column].value_counts().reset_index()
+    value_counts.columns = [column, 'Count']
+    sns.barplot(x=column, y='Count', data=value_counts, hue=column, palette='tab20', dodge=False, legend=False)
+    # Annotate bars with the count values
+    for index, row in value_counts.iterrows():
+        plt.text(index, row['Count'] + 0.5, f"{row['Count']}", color='black', ha="center")
+
+    # Set plot labels and title
+    plt.xticks(rotation=90)
+    plt.xlabel(column)
+    plt.ylabel('Count')
+    plt.title(f'Distribution of {column}s in the Dataset')
+    
+    # Show or save the plot
+    if savename:
+        plt.savefig(os.path.join(figures_path, savename), bbox_inches='tight', dpi=300)
+        plt.close()
+    else:
+        plt.show()
 
 def plot_value_counts(df, column_name, savename=None):
     """
@@ -350,8 +444,8 @@ def plot_value_counts(df, column_name, savename=None):
 
     # Save the plot if a savename is provided
     if savename:
-        plt.savefig(savename, bbox_inches='tight', dpi=300)
-        print(f"Figure saved to {savename}")
+        plt.savefig(os.path.join(figures_path, savename), bbox_inches='tight', dpi=300)
+        plt.close()
 
 def perform_pca(X, y, n_components=2, savename=None):
     """
@@ -400,7 +494,7 @@ def perform_pca(X, y, n_components=2, savename=None):
     # Save the plot if a savename is provided
     if savename:
         plt.savefig(savename, bbox_inches='tight', dpi=300)
-        print(f"Figure saved to {savename}")
+        plt.close()
 
     return X_pca
 
@@ -462,7 +556,7 @@ def compute_and_plot_correlations(df, label_column, method='pearson', plot=True,
 
         # Save the plot if a savename is provided
         if savename:
-            plt.savefig(savename, bbox_inches='tight', dpi=300)
+            plt.savefig(os.path.join(figures_path, savename), bbox_inches='tight', dpi=300)
             print(f"Heatmap saved to {savename}")
 
 
@@ -537,7 +631,7 @@ def plot_correlations_as_bar(df, label_column, method='pearson', savename=None):
     
     # Save the plot if a savename is provided
     if savename:
-        plt.savefig(savename, bbox_inches='tight', dpi=300)
+        plt.savefig(os.path.join(figures_path, savename), bbox_inches='tight', dpi=300)
         print(f"Bar plot saved to {savename}")
     
     # Show the plot
@@ -602,14 +696,85 @@ if(__name__ == "__main__"):
 
     df = read_csv_as_dataframe(dataset)
     print(df.head())
-    
-    #plot_feature_relationship(df, "APG", "RPG", savename=os.path.join(figures_path, "prova.png"))
-    #plot_column_distribution(df, "Playoff", plot_type='hist', bins=20, kde=True, savename="prova.png")
-    #plot_distribution_by_year(df, "PF", bins=20, savename="prova.png")
-    #plot_value_counts(df, "Winner", savename="prova.png")
 
-    X, y = dataframe_to_numpy(df, "MVP")
-    _ = perform_pca(X, y, n_components=2, savename="prova.png")
-    #compute_and_plot_correlations(df, "Playoff", method='pearson', plot=True, savename="prova.png")
-    #plot_correlations_as_bar(df, "Playoff", method='pearson', savename="prova.png")
+    # select features for plot functions
+    if dataset == "teams":
+        features_list = [col for col in df.columns if col!="Team" 
+                        and col!="Playoff" and col!="Finalist" and col!="Winner" 
+                        and col!="GP"] 
+    elif dataset == "players":
+        features_list = [col for col in df.columns if col!="Player" and col!="MVP" and col!="Team"]
+
+    # feature by year
+    for feature in features_list:
+        savename = f"{dataset}_{feature}_by_year.png"
+        plot_column_by_year(df, feature, savename=savename)
+
+    # Generate all combinations of features
+    feature_pairs = list(itertools.combinations(features_list, 2))
+    # features relationship
+    for feature_1, feature_2 in feature_pairs:
+        savename = f"{dataset}_{feature_1}_vs_{feature_2}.png"
+        plot_feature_relationship(df, feature_1, feature_2, savename=savename)
+
+    # features distribution
+    for feature in features_list:
+        savename = f"{dataset}_{feature}_distribution.png"
+        plot_column_distribution(df, feature, plot_type='hist', bins=20, kde=True, savename=savename)
+
+    # features distribution by year
+    for feature in features_list:
+        savename = f"{dataset}_{feature}_distribution_by_year.png"
+        plot_distribution_by_year(df, feature, bins=20, savename=savename)
+
+    # features disribution by year and team
+    for feature in features_list:
+        savename = f"{dataset}_{feature}_distribution_by_year_and_team.png"
+        if dataset == "teams":
+            plot_feature_by_year_and_team(df, "APG", teams=df["Teams"].unique(), players=None, savename=savename)
+        if dataset == "players":
+            plot_feature_by_year_and_team(df, "APG", teams=None, players=df["Player"].unique(), savename=savename)
+
+    # teams and players distribution
+    if dataset == "teams":
+        savename = f"{dataset}_distribution.png"
+        plot_teams_players_distribution(df, column='Team', savename=savename)
+    if dataset == "players":
+        savename = f"{dataset}_distribution.png"
+        plot_teams_players_distribution(df, column='Player', savename=savename)
+
+    # label counts
+    if dataset == "teams":
+        plot_value_counts(df, "Playoff", savename="teams_playoff_label_counts.png")
+        plot_value_counts(df, "Finalist", savename="teams_finalist_label_counts.png")
+        plot_value_counts(df, "Winner", savename="teams_winner_label_counts.png")
+    if dataset == "players":
+        plot_value_counts(df, "MVP", savename="players_mvp_label_counts.png")
+
+    # pca plot
+    if dataset == "teams":
+        X, y = dataframe_to_numpy(df, "Playoff")
+        _ = perform_pca(X, y, n_components=2, savename=f"{dataset}_pca_2d_playoff.png")
+        X, y = dataframe_to_numpy(df, "Finalist")
+        _ = perform_pca(X, y, n_components=2, savename=f"{dataset}_pca_2d_finalist.png")
+        X, y = dataframe_to_numpy(df, "Winner")
+        _ = perform_pca(X, y, n_components=2, savename=f"{dataset}_pca_2d_winner.png")
+    if dataset == "players":
+        X, y = dataframe_to_numpy(df, "MVP")
+        _ = perform_pca(X, y, n_components=2, savename=f"{dataset}_pca_2d_mvp.png")
+
+    # pearson correlation
+    if dataset == "teams":
+        compute_and_plot_correlations(df, "Playoff", method='pearson', plot=True, savename="teams_correlation_with_playoff_label.png")
+        compute_and_plot_correlations(df, "Finalist", method='pearson', plot=True, savename="teams_correlation_with_finalist_label.png")
+        compute_and_plot_correlations(df, "Winner", method='pearson', plot=True, savename="teams_correlation_with_winner_label.png")
+
+        plot_correlations_as_bar(df, "Playoff", method='pearson', savename="teams_bar_correlation_with_playoff_label.png")
+        plot_correlations_as_bar(df, "Finalist", method='pearson', savename="teams_bar_correlation_with_finalist_label.png")
+        plot_correlations_as_bar(df, "Winner", method='pearson', savename="teams_bar_correlation_with_winner_label.png")
+
+    if dataset == "players":
+        compute_and_plot_correlations(df, "MVP", method='pearson', plot=True, savename="players_correlation_with_mvp_label.png")
+        plot_correlations_as_bar(df, "MVP", method='pearson', savename="players_bar_correlation_with_mvp_label.png")
+
     #a, b = kruskal_wallis_test(df, "Playoff")
