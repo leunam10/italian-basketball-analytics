@@ -24,9 +24,30 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument("--dataset", choices=["teams", "players"], help = "which dataset to use for the analysis")
+parser.add_argument("--feature_by_year", choices=["yes", "no"], default="no",help = "if to plot the features as function of year")
+parser.add_argument("--features_relationship", choices=["yes", "no"], default="no", help = "if to plot the features as function of year")
+parser.add_argument("--feature_distribution", choices=["yes", "no"], default="no", help = "if to plot the features distribution")
+parser.add_argument("--features_distribution_by_year", choices=["yes", "no"], default="no", help = "if to plot the features distribution by year")
+parser.add_argument("--features_distribution_by_year_and_team", choices=["yes", "no"], default="no", help = "if to plot the features distribution by year and team/player")
+parser.add_argument("--teams_players_distribution", choices=["yes", "no"], default="no", help = "if to plot the teams/players distribution")
+parser.add_argument("--labels_count", choices=["yes", "no"], default="no", help = "if to plot the labels count")
+parser.add_argument("--pca", choices=["yes", "no"], default="no", help = "make pca plot")
+parser.add_argument("--pearson_correlation", choices=["yes", "no"], default="no", help = "if to plot the pearson correlation coefficient")
+
+
 args = parser.parse_args()
 
 dataset = args.dataset
+feature_by_year = True if args.feature_by_year=="yes" else False
+features_relationship = True if args.features_relationship=="yes" else False
+feature_distribution = True if args.feature_distribution=="yes" else False
+features_distribution_by_year = True if args.features_distribution_by_year=="yes" else False
+features_distribution_by_year_and_team = True if args.features_distribution_by_year_and_team=="yes" else False
+teams_players_distribution = True if args.teams_players_distribution=="yes" else False
+labels_count = True if args.labels_count=="yes" else False
+pca = True if args.pca=="yes" else False
+pearson_correlation = True if args.pearson_correlation=="yes" else False
+
 
 # path definition
 script_path = os.path.dirname(os.path.abspath("eda.py"))
@@ -493,7 +514,7 @@ def perform_pca(X, y, n_components=2, savename=None):
     
     # Save the plot if a savename is provided
     if savename:
-        plt.savefig(savename, bbox_inches='tight', dpi=300)
+        plt.savefig(os.path.join(figures_path, savename), bbox_inches='tight', dpi=300)
         plt.close()
 
     return X_pca
@@ -516,7 +537,7 @@ def compute_and_plot_correlations(df, label_column, method='pearson', plot=True,
     """
 
     # Drop 'Team' or 'Player' column if present
-    if "Team" in df.columns:
+    if "Team" in df.columns and "Player" not in df.columns:
         df = df.drop(columns=['Team'])
         if label_column == "Playoff":
             df = df.drop(columns=["Finalist", "Winner"])
@@ -578,7 +599,7 @@ def plot_correlations_as_bar(df, label_column, method='pearson', savename=None):
     """
 
     # Drop 'Team' or 'Player' column if present
-    if "Team" in df.columns:
+    if "Team" in df.columns and "Player" not in df.columns:
         df = df.drop(columns=['Team'])
         if label_column == "Playoff":
             df = df.drop(columns=["Finalist", "Winner"])
@@ -706,75 +727,86 @@ if(__name__ == "__main__"):
         features_list = [col for col in df.columns if col!="Player" and col!="MVP" and col!="Team"]
 
     # feature by year
-    for feature in features_list:
-        savename = f"{dataset}_{feature}_by_year.png"
-        plot_column_by_year(df, feature, savename=savename)
+    if feature_by_year:
+        for feature in features_list:
+            savename = f"{dataset}_{feature}_by_year.png"
+            plot_column_by_year(df, feature, savename=savename)
 
     # Generate all combinations of features
-    feature_pairs = list(itertools.combinations(features_list, 2))
-    # features relationship
-    for feature_1, feature_2 in feature_pairs:
-        savename = f"{dataset}_{feature_1}_vs_{feature_2}.png"
-        plot_feature_relationship(df, feature_1, feature_2, savename=savename)
+    if features_relationship:
+        feature_pairs = list(itertools.combinations(features_list, 2))
+        # features relationship
+        for feature_1, feature_2 in feature_pairs:
+            savename = f"{dataset}_{feature_1}_vs_{feature_2}.png"
+            plot_feature_relationship(df, feature_1, feature_2, savename=savename)
 
     # features distribution
-    for feature in features_list:
-        savename = f"{dataset}_{feature}_distribution.png"
-        plot_column_distribution(df, feature, plot_type='hist', bins=20, kde=True, savename=savename)
+    if feature_distribution:
+        for feature in features_list:
+            savename = f"{dataset}_{feature}_distribution.png"
+            plot_column_distribution(df, feature, plot_type='hist', bins=20, kde=True, savename=savename)
 
     # features distribution by year
-    for feature in features_list:
-        savename = f"{dataset}_{feature}_distribution_by_year.png"
-        plot_distribution_by_year(df, feature, bins=20, savename=savename)
+    if features_distribution_by_year:
+        for feature in features_list:
+            savename = f"{dataset}_{feature}_distribution_by_year.png"
+            plot_distribution_by_year(df, feature, bins=20, savename=savename)
 
     # features disribution by year and team
-    for feature in features_list:
-        savename = f"{dataset}_{feature}_distribution_by_year_and_team.png"
-        if dataset == "teams":
-            plot_feature_by_year_and_team(df, "APG", teams=df["Teams"].unique(), players=None, savename=savename)
-        if dataset == "players":
-            plot_feature_by_year_and_team(df, "APG", teams=None, players=df["Player"].unique(), savename=savename)
+    if features_distribution_by_year_and_team:
+        for feature in features_list:
+            savename = f"{dataset}_{feature}_distribution_by_year_and_team.png"
+            if dataset == "teams":
+                plot_feature_by_year_and_team(df, "APG", teams=df["Teams"].unique(), players=None, savename=savename)
+            if dataset == "players":
+                plot_feature_by_year_and_team(df, "APG", teams=None, players=df["Player"].unique(), savename=savename)
 
     # teams and players distribution
-    if dataset == "teams":
-        savename = f"{dataset}_distribution.png"
-        plot_teams_players_distribution(df, column='Team', savename=savename)
-    if dataset == "players":
-        savename = f"{dataset}_distribution.png"
-        plot_teams_players_distribution(df, column='Player', savename=savename)
+    if teams_players_distribution:
+        if dataset == "teams":
+            savename = f"{dataset}_distribution.png"
+            plot_teams_players_distribution(df, column='Team', savename=savename)
+        if dataset == "players":
+            savename = f"{dataset}_distribution.png"
+            plot_teams_players_distribution(df, column='Player', savename=savename)
 
     # label counts
-    if dataset == "teams":
-        plot_value_counts(df, "Playoff", savename="teams_playoff_label_counts.png")
-        plot_value_counts(df, "Finalist", savename="teams_finalist_label_counts.png")
-        plot_value_counts(df, "Winner", savename="teams_winner_label_counts.png")
-    if dataset == "players":
-        plot_value_counts(df, "MVP", savename="players_mvp_label_counts.png")
+    if labels_count:
+        if dataset == "teams":
+            plot_value_counts(df, "Playoff", savename="teams_playoff_label_counts.png")
+            plot_value_counts(df, "Finalist", savename="teams_finalist_label_counts.png")
+            plot_value_counts(df, "Winner", savename="teams_winner_label_counts.png")
+        if dataset == "players":
+            plot_value_counts(df, "MVP", savename="players_mvp_label_counts.png")
 
     # pca plot
-    if dataset == "teams":
-        X, y = dataframe_to_numpy(df, "Playoff")
-        _ = perform_pca(X, y, n_components=2, savename=f"{dataset}_pca_2d_playoff.png")
-        X, y = dataframe_to_numpy(df, "Finalist")
-        _ = perform_pca(X, y, n_components=2, savename=f"{dataset}_pca_2d_finalist.png")
-        X, y = dataframe_to_numpy(df, "Winner")
-        _ = perform_pca(X, y, n_components=2, savename=f"{dataset}_pca_2d_winner.png")
-    if dataset == "players":
-        X, y = dataframe_to_numpy(df, "MVP")
-        _ = perform_pca(X, y, n_components=2, savename=f"{dataset}_pca_2d_mvp.png")
+    if pca:
+        if dataset == "teams":
+            X, y = dataframe_to_numpy(df, "Playoff")
+            _ = perform_pca(X, y, n_components=2, savename=f"{dataset}_pca_2d_playoff.png")
+            X, y = dataframe_to_numpy(df, "Finalist")
+            _ = perform_pca(X, y, n_components=2, savename=f"{dataset}_pca_2d_finalist.png")
+            X, y = dataframe_to_numpy(df, "Winner")
+            _ = perform_pca(X, y, n_components=2, savename=f"{dataset}_pca_2d_winner.png")
+        if dataset == "players":
+            X, y = dataframe_to_numpy(df, "MVP")
+            _ = perform_pca(X, y, n_components=2, savename=f"{dataset}_pca_2d_mvp.png")
 
     # pearson correlation
-    if dataset == "teams":
-        compute_and_plot_correlations(df, "Playoff", method='pearson', plot=True, savename="teams_correlation_with_playoff_label.png")
-        compute_and_plot_correlations(df, "Finalist", method='pearson', plot=True, savename="teams_correlation_with_finalist_label.png")
-        compute_and_plot_correlations(df, "Winner", method='pearson', plot=True, savename="teams_correlation_with_winner_label.png")
+    if pearson_correlation:
+        if dataset == "teams":
+            compute_and_plot_correlations(df, "Playoff", method='pearson', plot=True, savename="teams_correlation_with_playoff_label.png")
+            compute_and_plot_correlations(df, "Finalist", method='pearson', plot=True, savename="teams_correlation_with_finalist_label.png")
+            compute_and_plot_correlations(df, "Winner", method='pearson', plot=True, savename="teams_correlation_with_winner_label.png")
 
-        plot_correlations_as_bar(df, "Playoff", method='pearson', savename="teams_bar_correlation_with_playoff_label.png")
-        plot_correlations_as_bar(df, "Finalist", method='pearson', savename="teams_bar_correlation_with_finalist_label.png")
-        plot_correlations_as_bar(df, "Winner", method='pearson', savename="teams_bar_correlation_with_winner_label.png")
+            plot_correlations_as_bar(df, "Playoff", method='pearson', savename="teams_bar_correlation_with_playoff_label.png")
+            plot_correlations_as_bar(df, "Finalist", method='pearson', savename="teams_bar_correlation_with_finalist_label.png")
+            plot_correlations_as_bar(df, "Winner", method='pearson', savename="teams_bar_correlation_with_winner_label.png")
 
-    if dataset == "players":
-        compute_and_plot_correlations(df, "MVP", method='pearson', plot=True, savename="players_correlation_with_mvp_label.png")
-        plot_correlations_as_bar(df, "MVP", method='pearson', savename="players_bar_correlation_with_mvp_label.png")
+        if dataset == "players":
+            compute_and_plot_correlations(df, "MVP", method='pearson', plot=True, savename="players_correlation_with_mvp_label.png")
+            plot_correlations_as_bar(df, "MVP", method='pearson', savename="players_bar_correlation_with_mvp_label.png")
 
-    #a, b = kruskal_wallis_test(df, "Playoff")
+    # Kruskal-Wallis Test
+    #results_df, significant_features_count = kruskal_wallis_test(df, "Playoff")
+    
