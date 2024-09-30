@@ -31,7 +31,7 @@ import os
 
 class MLPredictor:
 
-    def __init__(self, data_path, output_path, figures_path, dataset_type):
+    def __init__(self, data_path, output_path, figures_path, models_path, dataset_type):
         """
         Initialize the MLPredictor class with dataset path and type.
 
@@ -45,6 +45,7 @@ class MLPredictor:
         self.data_path = data_path
         self.output_path = output_path
         self.figures_path = figures_path
+        self.models_path = models_path
         self.dataset_type = dataset_type
         self.df = self.read_data()
     
@@ -102,7 +103,10 @@ class MLPredictor:
         y = df[label_column].values  # Convert the label column to a NumPy array
         X = df.drop(columns=[label_column]).values  # Drop the label column and convert the remaining to a NumPy array
 
-        return X, y    
+        # save the dataset of only the feautures as pd.dataframe
+        df_features = df.drop(columns=[label_column])
+
+        return X, y, df_features
 
     def standardize_features(self, X, method='standard'):
         """
@@ -145,7 +149,7 @@ class MLPredictor:
         X_train, X_test, y_train, y_test = train_test_split(X, y, shuffle=shuffle, test_size=test_size, random_state=random_state)
         return X_train, X_test, y_train, y_test
 
-    def perform_feature_selection(X, y, method='univariate', k=10, estimator=None, scale_features=True):
+    def perform_feature_selection(self, X, y, method='univariate', k=10, estimator=None, scale_features=True):
         """
         Perform feature selection using specified method and return the selected features.
 
@@ -161,6 +165,7 @@ class MLPredictor:
             np.ndarray: Selected feature indices.
             list: Names of selected features if X is a DataFrame.
         """
+
         if scale_features:
             # Standardize features
             scaler = StandardScaler()
@@ -224,12 +229,12 @@ class MLPredictor:
         """
         # Define the parameter grid for XGBoost
         param_grid = {
-            'n_estimators': [50, 100, 150, 200, 300],
-            'max_depth': [3, 5, 7, 9, 11],
+            'n_estimators': [130, 135, 145, 150, 155, 160],
+            'max_depth': [9, 10, 11, 12, 13, 14],
             'learning_rate': [0.01, 0.05, 0.1, 0.15, 0.2],
-            'subsample': [0.6, 0.7, 0.8, 0.9, 1.0],
+            'subsample': [0.6, 0.62, 0.64, 0.66, 0.68, 0.70, 0.72],
             'colsample_bytree': [0.6, 0.7, 0.8, 0.9, 1.0],
-            'gamma': [0, 0.1, 0.2, 0.3, 0.4],
+            'gamma': [0.18, 0.2, 0.22],
             'min_child_weight': [1, 2, 3, 4, 5]
         }
 
@@ -286,7 +291,9 @@ class MLPredictor:
 
             # Save the model if a path is provided
             if save_model_path:
-                joblib.dump(model, save_model_path)
+                # Ensure the directory exists
+                os.makedirs(self.models_path, exist_ok=True)
+                joblib.dump(model, os.path.join(self.models_path, save_model_path))
                 print(f"Model saved to {save_model_path}")
 
             print("Model trained with standard hyperparameters.")
@@ -355,7 +362,8 @@ class MLPredictor:
 
             # Save the best model if a path is provided
             if save_model_path:
-                joblib.dump(random_search.best_estimator_, save_model_path)
+                os.makedirs(self.models_path, exist_ok=True)
+                joblib.dump(model, os.path.join(self.models_path, save_model_path))
                 print(f"Best model saved to {save_model_path}")
 
             # Return the best parameters, best score, and the fitted model
@@ -468,7 +476,8 @@ class MLPredictor:
 
             # Save the model if a path is provided
             if save_model_path:
-                joblib.dump(model, save_model_path)
+                os.makedirs(self.models_path, exist_ok=True)
+                joblib.dump(model, os.path.join(self.models_path, save_model_path))
                 print(f"Model saved to {save_model_path}")
 
             return None, None, model
@@ -508,7 +517,9 @@ class MLPredictor:
         plt.ylabel('True Label')
 
         if savename:
-            plt.savefig(os.path.join(figures_path, savename), bbox_inches='tight', dpi=300)
+            # Ensure the directory exists
+            os.makedirs(self.figures_path, exist_ok=True)
+            plt.savefig(os.path.join(self.figures_path, savename), bbox_inches='tight', dpi=300)
         else:
             plt.show()
 
@@ -523,6 +534,7 @@ class MLPredictor:
 
         return metrics
 
+    
 # Argument Definition 
 parser = argparse.ArgumentParser(
     prog = "Machine Learning Model Prediciton",
@@ -530,7 +542,7 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument("--dataset", choices=["teams", "players"], help = "which dataset to use for the analysis")
-parser.add_argument("--label_column", choices=["Playoff", "Winners", "Finalist", "MVP"], help = "which label to use for the prediction")
+parser.add_argument("--label_column", choices=["Playoff", "Winner", "Finalist", "MVP"], help = "which label to use for the prediction")
 
 
 if __name__ == "__main__":
@@ -543,6 +555,7 @@ if __name__ == "__main__":
     data_path = os.path.join(script_path, "../data/")
     output_path = os.path.join(script_path, "../output/")
     figures_path = os.path.join(output_path, "figures/")
+    models_path = os.path.join(output_path, "models/")
 
     if dataset == "teams":
         data_file = os.path.join(data_path, "teams_stats_2003-2004_2023-2024.csv")
@@ -551,7 +564,7 @@ if __name__ == "__main__":
 
     # class initialization
     print("\nClass Initialization")
-    mlp = MLPredictor(data_file, output_path, figures_path, "teams")
+    mlp = MLPredictor(data_file, output_path, figures_path, models_path, "teams")
 
     # read the csv file as pandas dataframe
     print(f"Read the {data_file} dataset")
@@ -559,19 +572,28 @@ if __name__ == "__main__":
 
     # make features and label numpy array
     print("Creation of the features and label NumPy array")
-    X, y = mlp.dataframe_to_numpy(df, label_column, features_to_drop=["Year", "MPG", "FGM"])
+    X, y, df_features = mlp.dataframe_to_numpy(df, label_column, features_to_drop=["Year", "MPG", "FGM"])
 
+    # perform features selection and features scaling
+    selected_indices = mlp.perform_feature_selection(X, y, 
+                                                     method='importances', 
+                                                     k=10, 
+                                                     estimator=None, 
+                                                     scale_features=True)
+
+    # extract from the dataset the selected features (by indeces)
+    X_select = X[:, selected_indices]
+   
     # train and test split
     print("Train and Test split")
-    X_train, X_test, y_train, y_test = mlp.split_dataset(X, y, test_size=0.3, shuffle=True, random_state=42)
+    X_train, X_test, y_train, y_test = mlp.split_dataset(X_select, y, test_size=0.3, shuffle=True, random_state=42)
 
     # fit the model
     print("Fit the ML model")
-    _, _,model = mlp.fit_xgboost(X_train, y_train, tune_hyperparameters=False, n_splits=5, random_state=42, n_iter=50)
+    _, _,model = mlp.fit_xgboost(X_train, y_train, tune_hyperparameters=False, n_splits=5, random_state=42, n_iter=50, save_model_path="model.pkl")
     #_,_,model = mlp.fit_random_forest(X_train, y_train, tune_hyperparameters=False, n_splits=5, random_state=42, n_iter=50, save_model_path=None)
     #_,_,model = mlp.fit_perceptron(X_train, y_train, tune_hyperparameters=False, n_splits=5, random_state=42, n_iter=100, save_model_path=None)
 
     # evaluate the model
     print("Evaluate the best model")
     mlp.evaluate_model(model, X_test, y_test, savename="prova.png")
-
