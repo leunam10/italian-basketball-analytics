@@ -652,7 +652,8 @@ if __name__ == "__main__":
     #_,_,model = mlp.fit_perceptron(X_train, y_train, tune_hyperparameters=False, n_splits=5, random_state=42, n_iter=100, save_model_path=None)
 
     # evaluate the model
-    print("Evaluate the best model")
+    print("Evaluate the model on the augumented dataset")
     mlp.evaluate_model(model, X_test, y_test, savename="prova.png")
-    print("**************\n")
+
+    print("Evaluate the model on the real true dataset")
     mlp.evaluate_model(model, X_true[:, selected_indices], y_true)
