@@ -25,6 +25,8 @@ from xgboost import XGBClassifier
 from sklearn.metrics import make_scorer, f1_score, accuracy_score, precision_score, recall_score, confusion_matrix, classification_report
 import argparse
 import joblib
+from imblearn.over_sampling import SMOTE
+from sklearn.utils import resample
 
 import os
 
@@ -533,8 +535,54 @@ class MLPredictor:
         }
 
         return metrics
+  
+    def augment_dataset(self, X, y, method='noise', noise_factor=0.01, oversample=False, random_state=42):
+        """
+        Augment the dataset by adding noise, standard scaling, or oversampling.
 
-    
+        Parameters:
+            X (pd.DataFrame or np.ndarray): Feature set.
+            y (pd.Series or np.ndarray): Label set.
+            method (str): Augmentation method. Can be 'noise', 'scaling', or 'smote'.
+                          - 'noise': Adds small random noise to numerical features.
+                          - 'scaling': Standardizes the features.
+                          - 'smote': Uses SMOTE to generate synthetic data points for imbalanced datasets.
+            noise_factor (float): The scale of noise to add. Only used if `method='noise'`.
+            oversample (bool): If True, oversample the minority class using SMOTE (for classification).
+            random_state (int): Seed for reproducibility.
+
+        Returns:
+            X_augmented (pd.DataFrame or np.ndarray): Augmented feature set.
+            y_augmented (pd.Series or np.ndarray): Augmented label set.
+        """
+        # Convert X to a DataFrame if it's not already
+        if isinstance(X, np.ndarray):
+            X = pd.DataFrame(X)
+
+        if method == 'noise':
+            # Add small random noise to numerical columns
+            X_augmented = X + noise_factor * np.random.normal(loc=0.0, scale=1.0, size=X.shape)
+            y_augmented = y  # Labels remain the same
+
+        elif method == 'scaling':
+            # Standardize the features using StandardScaler
+            scaler = StandardScaler()
+            X_augmented = scaler.fit_transform(X)
+            y_augmented = y  # Labels remain the same
+
+        elif method == 'smote':
+            # Use SMOTE to augment the data for imbalanced classification tasks
+            smote = SMOTE(random_state=random_state)
+            X_augmented, y_augmented = smote.fit_resample(X, y)
+            X_augmented = X_augmented.values
+
+        # Optionally perform oversampling using resampling (for classification tasks)
+        if oversample and method != 'smote':
+            X_augmented, y_augmented = resample(X_augmented, y_augmented, replace=True, random_state=random_state)
+            X_augmented = X_augmented.values
+        
+        return X_augmented, y_augmented
+
 # Argument Definition 
 parser = argparse.ArgumentParser(
     prog = "Machine Learning Model Prediciton",
@@ -543,12 +591,14 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument("--dataset", choices=["teams", "players"], help = "which dataset to use for the analysis")
 parser.add_argument("--label_column", choices=["Playoff", "Winner", "Finalist", "MVP"], help = "which label to use for the prediction")
+parser.add_argument("--data_augmentation", choices=["yes", "no"], help = "if to augment the dataset or not")
 
 
 if __name__ == "__main__":
     args = parser.parse_args()
     dataset = args.dataset
     label_column = args.label_column
+    data_augmentation = True if args.data_augmentation == "yes" else False
 
     # path definition
     script_path = os.path.dirname(os.path.abspath("ml_prediction.py"))
@@ -574,6 +624,13 @@ if __name__ == "__main__":
     print("Creation of the features and label NumPy array")
     X, y, df_features = mlp.dataframe_to_numpy(df, label_column, features_to_drop=["Year", "MPG", "FGM"])
 
+    if data_augmentation:
+        print("Extract part of the dataset for TRUE testing")
+        X_to_augment, X_true, y_to_augment, y_true = mlp.split_dataset(X, y, test_size=0.2, shuffle=True, random_state=42)
+
+        print("Dataset Augmentation")
+        X, y = mlp.augment_dataset(X_to_augment, y_to_augment, oversample=True, method="smote")
+
     # perform features selection and features scaling
     selected_indices = mlp.perform_feature_selection(X, y, 
                                                      method='importances', 
@@ -583,17 +640,19 @@ if __name__ == "__main__":
 
     # extract from the dataset the selected features (by indeces)
     X_select = X[:, selected_indices]
-   
+    
     # train and test split
     print("Train and Test split")
     X_train, X_test, y_train, y_test = mlp.split_dataset(X_select, y, test_size=0.3, shuffle=True, random_state=42)
 
     # fit the model
     print("Fit the ML model")
-    _, _,model = mlp.fit_xgboost(X_train, y_train, tune_hyperparameters=False, n_splits=5, random_state=42, n_iter=50, save_model_path="model.pkl")
+    _, _,model = mlp.fit_xgboost(X_train, y_train, tune_hyperparameters=False, n_splits=5, random_state=42, n_iter=50, save_model_path=None)
     #_,_,model = mlp.fit_random_forest(X_train, y_train, tune_hyperparameters=False, n_splits=5, random_state=42, n_iter=50, save_model_path=None)
     #_,_,model = mlp.fit_perceptron(X_train, y_train, tune_hyperparameters=False, n_splits=5, random_state=42, n_iter=100, save_model_path=None)
 
     # evaluate the model
     print("Evaluate the best model")
     mlp.evaluate_model(model, X_test, y_test, savename="prova.png")
+    print("**************\n")
+    mlp.evaluate_model(model, X_true[:, selected_indices], y_true)
