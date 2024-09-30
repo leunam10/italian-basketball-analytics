@@ -591,7 +591,7 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument("--dataset", choices=["teams", "players"], help = "which dataset to use for the analysis")
 parser.add_argument("--label_column", choices=["Playoff", "Winner", "Finalist", "MVP"], help = "which label to use for the prediction")
-parser.add_argument("--data_augmentation", choices=["yes", "no"], help = "if to augment the dataset or not")
+parser.add_argument("--data_augmentation", choices=["yes", "no"], default="no", help = "if to augment the dataset or not")
 
 
 if __name__ == "__main__":
@@ -641,19 +641,32 @@ if __name__ == "__main__":
     # extract from the dataset the selected features (by indeces)
     X_select = X[:, selected_indices]
     
+    print("Selected Features")
+    print(list(df_features.iloc[:, selected_indices].columns))
+
+    # saving the dataframe of the features after selection and scaling
+    #if dataset == "teams":
+    #    df_features.iloc[:, selected_indices].to_csv(os.path.join(output_path, "teams_stats_2003-2004_2023-2024.csv"), index=None)
+    #elif dataset == "players":
+    #    df_features.iloc[:, selected_indices].to_csv(os.path.join(output_path, "players_stats_2003-2004_2023-2024.csv"), index=None)
+
     # train and test split
     print("Train and Test split")
     X_train, X_test, y_train, y_test = mlp.split_dataset(X_select, y, test_size=0.3, shuffle=True, random_state=42)
 
     # fit the model
     print("Fit the ML model")
-    _, _,model = mlp.fit_xgboost(X_train, y_train, tune_hyperparameters=False, n_splits=5, random_state=42, n_iter=50, save_model_path=None)
+    _, _,model = mlp.fit_xgboost(X_train, y_train, tune_hyperparameters=False, n_splits=5, random_state=42, n_iter=50, save_model_path="model.pkl")
     #_,_,model = mlp.fit_random_forest(X_train, y_train, tune_hyperparameters=False, n_splits=5, random_state=42, n_iter=50, save_model_path=None)
     #_,_,model = mlp.fit_perceptron(X_train, y_train, tune_hyperparameters=False, n_splits=5, random_state=42, n_iter=100, save_model_path=None)
 
     # evaluate the model
-    print("Evaluate the model on the augumented dataset")
+    if data_augmentation:
+        print("Evaluate the model on the augumented test set")
+    else:
+        print("Evaluate the model on the test")
     mlp.evaluate_model(model, X_test, y_test, savename="prova.png")
 
-    print("Evaluate the model on the real true dataset")
-    mlp.evaluate_model(model, X_true[:, selected_indices], y_true)
+    if data_augmentation:
+        print("Evaluate the model on the true test set")
+        mlp.evaluate_model(model, X_true[:, selected_indices], y_true)
